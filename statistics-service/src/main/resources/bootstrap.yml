@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: statistics-service
+  cloud:
+    config:
+      uri: http://config:8888
+      fail-fast: false
+      password: ${CONFIG_SERVICE_PASSWORD}
+      username: user
+server:
+  port: 7000
