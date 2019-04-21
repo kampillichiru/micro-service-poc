@@ -14,45 +14,45 @@ MongoDB (4.0.5)<br>
 Robo 3t<br>
 Rabbitmq (3.7.13)<br>
 
-Please run below commands using MongoD CLI after MongoDB Installation
+Please run below commands using MongoD CLI after MongoDB Installation:<br>
 
-mongod --dbpath "C:\chiru\MongoDB\data" --logpath "C:\chiru\MongoDB\log\logs.txt" --install --serviceName "MongoDB"
-mongod --config D:\mongodb\mongo.config --install
-
-use account
-db.account.insert({"name":"tutorials point"})
+mongod --dbpath "C:\chiru\MongoDB\data" --logpath "C:\chiru\MongoDB\log\logs.txt" --install --serviceName "MongoDB"<br>
+mongod --config D:\mongodb\mongo.config --install<br>
+<br>
+use account<br>
+db.account.insert({"name":"tutorials point"})<br>
 db.createUser(
 {	user: "mongo",
 	pwd: "mongo",
 	roles:[{role: "userAdmin" , db:"account"}]})
 
-use authtest
-db.authtest.insert({"name":"tutorials point"})	
+use authtest<br>
+db.authtest.insert({"name":"tutorials point"})	<br>
 db.createUser(
 {	user: "mongo",
 	pwd: "mongo",
 	roles:[{role: "userAdmin" , db:"authtest"}]})	
 
-use notification
-db.notification.insert({"name":"tutorials point"})
+use notification<br>
+db.notification.insert({"name":"tutorials point"})<br>
 db.createUser(
 {	user: "mongo",
 	pwd: "mongo",
-	roles:[{role: "userAdmin" , db:"notification"}]})
+	roles:[{role: "userAdmin" , db:"notification"}]})<br>
 
-use statistics
-db.statistics.insert({"name":"tutorials point"})
+use statistics<br>
+db.statistics.insert({"name":"tutorials point"})<br>
 db.createUser(
 {	user: "mongo",
 	pwd: "mongo",
-	roles:[{role: "userAdmin" , db:"statistics"}]})	
+	roles:[{role: "userAdmin" , db:"statistics"}]})	<br>
 
-Dump Mongdb Data into accounts db from mongodb module
+Dump Mongdb Data into accounts db from mongodb module<br>
 
-mongo localhost:27017/account C:\chiru\Micro_Services\piggymetrics-master\mongodb\dump\account-service-dump.js
+mongo localhost:27017/account C:\chiru\Micro_Services\piggymetrics-master\mongodb\dump\account-service-dump.js<br>
 
-Rabbit Mq Start and stop:
+Rabbit Mq Start and stop:<br>
 
-rabbitmq-plugins enable rabbitmq_management
-rabbitmqctl stop 	
-rabbitmq-server start
+rabbitmq-plugins enable rabbitmq_management<br>
+rabbitmqctl stop 	<br>
+rabbitmq-server start<br>
