@@ -7,12 +7,12 @@
 Tools Required:
 
 Java 8<br>
-Maven 3.3.9
-IntelliJ
-Erlang (otp_win64_21.3)
-MongoDB (4.0.5)
-Robo 3t
-Rabbitmq (3.7.13)
+Maven 3.3.9<br>
+IntelliJ<br>
+Erlang (otp_win64_21.3)<br>
+MongoDB (4.0.5)<br>
+Robo 3t<br>
+Rabbitmq (3.7.13)<br>
 
 Please run below commands using MongoD CLI after MongoDB Installation
 
