@@ -6,7 +6,7 @@
 
 Tools Required:
 
-Java 8
+Java 8<br>
 Maven 3.3.9
 IntelliJ
 Erlang (otp_win64_21.3)
