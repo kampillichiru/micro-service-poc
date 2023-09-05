@@ -1,0 +1,48 @@
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+public class DateUtil {
+
+    public enum DateFormat {
+        DD_MM_YYYY("dd-MM-yyyy"),
+        MM_DD_YYYY("MM-dd-yyyy"),
+        YYYY_MM_DD("yyyy-MM-dd"),
+        DD_MM_YY("dd-MM-yy"),
+        MM_DD_YY("MM-dd-yy"),
+        YY_MM_DD("yy-MM-dd"),
+        DDMMYYYY("ddMMyyyy"),
+        MMDDYYYY("MMddyyyy"),
+        YYYYMMDD("yyyyMMdd"),
+        DD_MMM_YYYY("dd-MMM-yyyy");
+
+        private final String format;
+
+        DateFormat(String format) {
+            this.format = format;
+        }
+
+        public String getFormat() {
+            return format;
+        }
+    }
+
+    public static String formatDate(Date date, DateFormat dateFormat) {
+        SimpleDateFormat sdf = new SimpleDateFormat(dateFormat.getFormat());
+        return sdf.format(date);
+    }
+
+    public static void main(String[] args) {
+        Date currentDate = new Date();
+
+        // Example usages:
+        for (DateFormat format : DateFormat.values()) {
+            String formattedDate = formatDate(currentDate, format);
+            System.out.println(format.name() + ": " + formattedDate);
+        }
+    }
+}
+
+
+
+
+
