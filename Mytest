@@ -1,48 +1,99 @@
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
-public class DateUtil {
-
-    public enum DateFormat {
-        DD_MM_YYYY("dd-MM-yyyy"),
-        MM_DD_YYYY("MM-dd-yyyy"),
-        YYYY_MM_DD("yyyy-MM-dd"),
-        DD_MM_YY("dd-MM-yy"),
-        MM_DD_YY("MM-dd-yy"),
-        YY_MM_DD("yy-MM-dd"),
-        DDMMYYYY("ddMMyyyy"),
-        MMDDYYYY("MMddyyyy"),
-        YYYYMMDD("yyyyMMdd"),
-        DD_MMM_YYYY("dd-MMM-yyyy");
-
-        private final String format;
-
-        DateFormat(String format) {
-            this.format = format;
-        }
-
-        public String getFormat() {
-            return format;
-        }
-    }
-
-    public static String formatDate(Date date, DateFormat dateFormat) {
-        SimpleDateFormat sdf = new SimpleDateFormat(dateFormat.getFormat());
-        return sdf.format(date);
-    }
-
+public class Main {
     public static void main(String[] args) {
-        Date currentDate = new Date();
+        String[] dateFormats = {
+            "d-MMM-yy",
+            "yyyy-MM-dd",
+            "dd MMM yy",
+            "yyyy/M/d",
+            "dd.MM.yyyy",
+            "yyyy/M/d",
+            "dd MMM yyyy",
+            "MMMM d, yyyy",
+            "yyyy/M/d",
+            "d-MMM-yy",
+            "yyyy.MM.dd",
+            "d MMMM yyyy",
+            "yyMMdd",
+            "d MMMM yyyy",
+            "MMM. dd, yyyy",
+            "dd MMMM yyyy",
+            "yyyy-MM-dd",
+            "dd MMM yyyy",
+            "yyyy-MM-dd",
+            "dd MMM yyyy",
+            "d MMM yyyy",
+            "yyyy-MM-dd",
+            "dd.MM.yyyy",
+            "yyMMdd",
+            "MMM. dd, yyyy",
+            "d MMMM yyyy"
+        };
 
-        // Example usages:
-        for (DateFormat format : DateFormat.values()) {
-            String formattedDate = formatDate(currentDate, format);
-            System.out.println(format.name() + ": " + formattedDate);
+        String[] dates = {
+            "5-Jul-23",
+            "2023-07-04",
+            "05 JUL 23",
+            "2023/6/20",
+            "28.03.2022",
+            "2023/6/20",
+            "23 JUN 2023",
+            "June 22, 2023",
+            "2023/6/20",
+            "17-Aug-23",
+            "2023.07.21",
+            "12 JUNE 2023",
+            "230821",
+            "12 JUNE 2023",
+            "JUL. 20, 2023",
+            "08 JUNE 2023",
+            "JUL.20.2023",
+            "July 19, 2023",
+            "2023-07-20",
+            "20 JUL, 2023",
+            "2023-07-20",
+            "08 JUNE 2023",
+            "20 JUL 2023",
+            "JUL. 20, 2023",
+            "08 JUNE 2023",
+            "2023-07-25",
+            "JUL.24,2023",
+            "AUG.27, 2023",
+            "2023-08-01",
+            "2024-01-26",
+            "2023-08-21",
+            "2023-07-30",
+            "2023.07.31",
+            "230719",
+            "JUL. 30, 2023",
+            "JUL. 27, 2023",
+            "14.07.2023"
+        };
+
+        DateTimeFormatter[] formatters = new DateTimeFormatter[dateFormats.length];
+
+        for (int i = 0; i < dateFormats.length; i++) {
+            formatters[i] = DateTimeFormatter.ofPattern(dateFormats[i], Locale.ENGLISH);
+        }
+
+        for (String date : dates) {
+            LocalDate parsedDate = null;
+            for (DateTimeFormatter formatter : formatters) {
+                try {
+                    parsedDate = LocalDate.parse(date, formatter);
+                    break;
+                } catch (Exception e) {
+                    // Try the next formatter
+                }
+            }
+            if (parsedDate != null) {
+                System.out.println("Input: " + date + " => Parsed Date: " + parsedDate);
+            } else {
+                System.out.println("Unable to parse date: " + date);
+            }
         }
     }
 }
-
-
-
-
-
