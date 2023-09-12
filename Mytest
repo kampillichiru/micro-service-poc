@@ -1,99 +1,32 @@
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class Main {
+public class DateParsingExample {
     public static void main(String[] args) {
-        String[] dateFormats = {
-            "d-MMM-yy",
-            "yyyy-MM-dd",
-            "dd MMM yy",
-            "yyyy/M/d",
-            "dd.MM.yyyy",
-            "yyyy/M/d",
-            "dd MMM yyyy",
-            "MMMM d, yyyy",
-            "yyyy/M/d",
-            "d-MMM-yy",
-            "yyyy.MM.dd",
-            "d MMMM yyyy",
-            "yyMMdd",
-            "d MMMM yyyy",
-            "MMM. dd, yyyy",
-            "dd MMMM yyyy",
-            "yyyy-MM-dd",
-            "dd MMM yyyy",
-            "yyyy-MM-dd",
-            "dd MMM yyyy",
-            "d MMM yyyy",
-            "yyyy-MM-dd",
-            "dd.MM.yyyy",
-            "yyMMdd",
-            "MMM. dd, yyyy",
-            "d MMMM yyyy"
-        };
+        String[] dates = {"1st Oct 2023", "2nd Oct 2023", "23rd Oct 2023", "25th Oct 2023"};
 
-        String[] dates = {
-            "5-Jul-23",
-            "2023-07-04",
-            "05 JUL 23",
-            "2023/6/20",
-            "28.03.2022",
-            "2023/6/20",
-            "23 JUN 2023",
-            "June 22, 2023",
-            "2023/6/20",
-            "17-Aug-23",
-            "2023.07.21",
-            "12 JUNE 2023",
-            "230821",
-            "12 JUNE 2023",
-            "JUL. 20, 2023",
-            "08 JUNE 2023",
-            "JUL.20.2023",
-            "July 19, 2023",
-            "2023-07-20",
-            "20 JUL, 2023",
-            "2023-07-20",
-            "08 JUNE 2023",
-            "20 JUL 2023",
-            "JUL. 20, 2023",
-            "08 JUNE 2023",
-            "2023-07-25",
-            "JUL.24,2023",
-            "AUG.27, 2023",
-            "2023-08-01",
-            "2024-01-26",
-            "2023-08-21",
-            "2023-07-30",
-            "2023.07.31",
-            "230719",
-            "JUL. 30, 2023",
-            "JUL. 27, 2023",
-            "14.07.2023"
-        };
-
-        DateTimeFormatter[] formatters = new DateTimeFormatter[dateFormats.length];
-
-        for (int i = 0; i < dateFormats.length; i++) {
-            formatters[i] = DateTimeFormatter.ofPattern(dateFormats[i], Locale.ENGLISH);
+        for (String dateStr : dates) {
+            LocalDate date = parseDate(dateStr);
+            System.out.println(date);
         }
+    }
 
-        for (String date : dates) {
-            LocalDate parsedDate = null;
-            for (DateTimeFormatter formatter : formatters) {
-                try {
-                    parsedDate = LocalDate.parse(date, formatter);
-                    break;
-                } catch (Exception e) {
-                    // Try the next formatter
-                }
-            }
-            if (parsedDate != null) {
-                System.out.println("Input: " + date + " => Parsed Date: " + parsedDate);
-            } else {
-                System.out.println("Unable to parse date: " + date);
-            }
+    public static LocalDate parseDate(String dateStr) {
+        Pattern pattern = Pattern.compile("(\\d{1,2})(st|nd|rd|th) (\\w{3}) (\\d{4})");
+        Matcher matcher = pattern.matcher(dateStr);
+
+        if (matcher.matches()) {
+            int day = Integer.parseInt(matcher.group(1));
+            int year = Integer.parseInt(matcher.group(4));
+            Month month = Month.valueOf(matcher.group(3).toUpperCase(Locale.ENGLISH));
+
+            return LocalDate.of(year, month, day);
+        } else {
+            throw new IllegalArgumentException("Invalid date format: " + dateStr);
         }
     }
 }
