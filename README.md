@@ -1,38 +1,17 @@
-import org.apache.commons.text.similarity.LevenshteinDistance;
+private static boolean levenshteinDistanceSimilarity(String keyword, String targetKeyword) {
+    LevenshteinDistance levenshteinDistance = LevenshteinDistance.getDefaultInstance();
 
-public class FuzzyMatch {
-    public static void main(String[] args) {
-        String keyword1 = "";
-        String[] strings1 = {
-            "",
-            ""
-        };
-        fuzzyMatch(keyword1, strings1);
-
-        String keyword2 = "";
-        String[] strings2 = {
-            ""
-        };
-        fuzzyMatch(keyword2, strings2);
-
-        String keyword3 = "";
-        String[] strings3 = {
-     
-        };
-        fuzzyMatch(keyword3, strings3);
-    }
-
-    public static void fuzzyMatch(String keyword, String[] strings) {
-        LevenshteinDistance levenshteinDistance = LevenshteinDistance.getDefaultInstance();
-
-        for (String str : strings) {
-            int distance = levenshteinDistance.apply(keyword, str);
-            double similarity = 1 - (double) distance / Math.max(keyword.length(), str.length());
-
-            if (similarity > 0.8) {  // Adjust threshold as needed
-                System.out.println("'" + keyword + "' matches with '" + str + "' with similarity: " + similarity);
-            }
-        }
-    }
+    return Arrays.stream(Delimiters.values())
+            .flatMap(sourceDelimiter -> Arrays.stream(Delimiters.values())
+                    .flatMap(targetDelimiter -> Arrays.stream(keyword.split(sourceDelimiter.getDelimiter()))
+                            .flatMap(splitSourceKeyword -> Arrays.stream(targetKeyword.split(targetDelimiter.getDelimiter()))
+                                    .map(splitTargetKeyword -> new Pair<>(splitSourceKeyword, splitTargetKeyword))
+                            )
+                    )
+            )
+            .anyMatch(pair -> {
+                double similarity = getSimilarity(levenshteinDistance, pair.getFirst(), pair.getSecond());
+                int averageNoOfWords = getAverageNoOfWords(pair.getFirst(), pair.getSecond());
+                return similarity > getThreshold(averageNoOfWords);
+            });
 }
-
