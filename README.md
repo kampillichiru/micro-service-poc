@@ -1,34 +1,20 @@
-import { Observable, from, forkJoin } from 'rxjs';
-import { map, mergeMap } from 'rxjs/operators';
+import { Observable, from } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 
-static splitFileByPages(ocrRequest: OcrRequest): Observable<Blob[]> {
-  const pagesize = Number(apiconfig.ocrRequestPagesize);
+prepareocrRequests(ocrRequest: OcrRequest): Observable<OcrRequest[]> {
+  return DocumentocrMapper.splitFileByPages(ocrRequest).pipe(
+    map((requestFileBlobs: Blob[]) => {
+      const ocrReqPdfFiles: OcrRequest[] = [];
 
-  return from(new Blob([ocrRequest.file]).arrayBuffer()).pipe(
-    mergeMap(async (requestFileBuffer) => await PDFDocument.load(requestFileBuffer, { updateMetadata: false })),
-    map(async (requestPdfDocument) => {
-      const requestFileBlobs: Blob[] = [];
-      let newPdfDocument = await PDFDocument.create();
+      requestFileBlobs.forEach((blob) => {
+        ocrReqPdfFiles.push({
+          file: new File([blob], ocrRequest.file.name),
+          isOCRRequiredPageByPage: ocrRequest.isOCRRequiredPageByPage,
+          isPageLevelOCRizationFeatureOn: ocrRequest.isPageLevelOCRizationFeatureon,
+        });
+      });
 
-      for (let i = 0; i <= requestPdfDocument.getPageCount() - 1; i++) {
-        newPdfDocument.setCreator(requestPdfDocument.getCreator());
-
-        const [ocrPage] = await newPdfDocument.copyPages(requestPdfDocument, [i]);
-        newPdfDocument.addPage(ocrPage);
-
-        if (i < pagesize && i < requestPdfDocument.getPageCount() - 1) {
-          continue;
-        }
-
-        const ocrReqPdfBlob = new Blob([await newPdfDocument.save()], { type: DocumentocrMapper.APPLICATION_PDF });
-        requestFileBlobs.push(ocrReqPdfBlob);
-
-        pagesize = i + Number(apiconfig.ocrRequestPageSize);
-        newPdfDocument = await PDFDocument.create();
-      }
-
-      return requestFileBlobs;
-    }),
-    mergeMap((blobArray) => forkJoin(blobArray.map((blob) => from(blob))))
+      return ocrReqPdfFiles;
+    })
   );
 }
