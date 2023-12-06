@@ -1,30 +1,34 @@
-import { Observable, forkJoin, of, concat } from 'rxjs';
-import { mergeMap, toArray } from 'rxjs/operators';
+import { concatMap, map } from 'rxjs/operators';
 
-private getocrizedDocumentForEachchunk(ocrRequest: OcrRequest): Observable<File[]> {
-  return this.prepareocrRequests(ocrRequest).pipe(
-    mergeMap(ocrRequests => {
-      const batchSize = 2; // Set your desired batch size
+// ...
 
-      const processBatch = (batch: OcrRequest[]) =>
-        forkJoin(batch.map(request => this.getocrizeDocument(request)));
+getMyResr(ocrRequest: OcrRequest): Observable<{ ocrizedFile: File, classifications: DocumentClassification[] }[]> {
+  const splittedFiles: Observable<File[]> = this.documentocrRepository.ocrizeDocumentTwo(ocrRequest);
 
-      const batches: Observable<File[]>[] = [];
-      let currentIndex = 0;
+  return splittedFiles.pipe(
+    concatMap(splittedFilesArray => {
+      const observables: Observable<{ ocrizedFile: File, classifications: DocumentClassification[] }>[] = [];
 
-      while (currentIndex < ocrRequests.length) {
-        const batch = ocrRequests.slice(currentIndex, currentIndex + batchSize);
-        currentIndex += batchSize;
+      splittedFilesArray.forEach(splittedFile => {
+        const ocrizeDocumentObservable = this.documentocrRepository.ocrizeDocument(splittedFile);
 
-        batches.push(of(batch).pipe(mergeMap(processBatch)));
-      }
+        // Use concatMap to process each file sequentially
+        const classificationsObservable = ocrizeDocumentObservable.pipe(
+          concatMap(ocrizedFile =>
+            this.documentclassificationRepository.getclassifications(ocrizedFile).pipe(
+              map(classifications => ({ ocrizedFile, classifications }))
+            )
+          )
+        );
 
-      // Concatenate the batches to ensure sequential processing
-      return concat(...batches).pipe(
-        // Flatten the array of arrays into a single array
-        mergeMap(results => results)
-      );
-    })
+        // Combine the observable for each file
+        observables.push(classificationsObservable);
+      });
+
+      // Combine all observables into a sequential stream
+      return forkJoin(observables);
+    }),
+    finalize(() => this.updateLoadingStatusGamma(...this.documents)),
+    takeUntil(this.ngDestroyed$)
   );
 }
-
