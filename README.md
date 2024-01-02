@@ -1,33 +1,54 @@
-import feign.RequestInterceptor;
-import feign.RequestTemplate;
-import feign.Response;
-import feign.ResponseInterceptor;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import okhttp3.Interceptor;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.RequestBody;
+import okio.Buffer;
 
-@Configuration
-public class FeignClientInterceptorConfig {
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMultipart;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
-    @Bean
-    public RequestInterceptor requestInterceptor() {
-        return new RequestInterceptor() {
-            @Override
-            public void apply(RequestTemplate template) {
-                // Log or manipulate request details if needed
-                System.out.println("Feign Request: " + template);
-            }
-        };
+public class MultipartInterceptor implements Interceptor {
+    @Override
+    public Response intercept(Chain chain) throws IOException {
+        Request originalRequest = chain.request();
+
+        // Assuming 'payload' is the part name for the file
+        RequestBody requestBody = originalRequest.body();
+        Buffer buffer = new Buffer();
+        requestBody.writeTo(buffer);
+
+        // Extract relevant parts using custom logic
+        String requestBodyString = buffer.readUtf8();
+        try {
+            extractMultipart(requestBodyString);
+        } catch (MessagingException e) {
+            e.printStackTrace();
+        }
+
+        // Proceed with the original request
+        return chain.proceed(originalRequest);
     }
 
-    @Bean
-    public ResponseInterceptor responseInterceptor() {
-        return new ResponseInterceptor() {
-            @Override
-            public void apply(Response response) {
-                // Log or manipulate response details if needed
-                System.out.println("Feign Response: " + response);
-            }
-        };
+    private void extractMultipart(String text) throws MessagingException, IOException {
+        // Extracting parts from the multipart content
+        MimeMultipart mimeMultipart = new MimeMultipart(new InputStreamDataSource(text));
+        int count = mimeMultipart.getCount();
+        for (int i = 0; i < count; i++) {
+            // Process each part as needed
+            // You might check content type, extract binary data, etc.
+            // Example: Part part = mimeMultipart.getBodyPart(i);
+            //          String contentType = part.getContentType();
+            //          InputStream inputStream = part.getInputStream();
+        }
+    }
+
+    // A custom DataSource to convert the string into an InputStream for MimeMultipart
+    private static class InputStreamDataSource extends javax.mail.util.ByteArrayDataSource {
+        public InputStreamDataSource(String data) throws IOException {
+            super(data.getBytes(StandardCharsets.UTF_8), "multipart/form-data");
+        }
     }
 }
-
