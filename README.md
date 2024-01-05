@@ -1,54 +1,91 @@
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.RequestBody;
-import okio.Buffer;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMultipart;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
-public class MultipartInterceptor implements Interceptor {
-    @Override
-    public Response intercept(Chain chain) throws IOException {
-        Request originalRequest = chain.request();
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-        // Assuming 'payload' is the part name for the file
-        RequestBody requestBody = originalRequest.body();
-        Buffer buffer = new Buffer();
-        requestBody.writeTo(buffer);
+public class MyInterceptorTest {
 
-        // Extract relevant parts using custom logic
-        String requestBodyString = buffer.readUtf8();
-        try {
-            extractMultipart(requestBodyString);
-        } catch (MessagingException e) {
-            e.printStackTrace();
-        }
+    private MockWebServer mockWebServer;
+    private MyInterceptor myInterceptor;
 
-        // Proceed with the original request
-        return chain.proceed(originalRequest);
+    @Before
+    public void setUp() {
+        mockWebServer = new MockWebServer();
+        myInterceptor = new MyInterceptor();
     }
 
-    private void extractMultipart(String text) throws MessagingException, IOException {
-        // Extracting parts from the multipart content
-        MimeMultipart mimeMultipart = new MimeMultipart(new InputStreamDataSource(text));
-        int count = mimeMultipart.getCount();
-        for (int i = 0; i < count; i++) {
-            // Process each part as needed
-            // You might check content type, extract binary data, etc.
-            // Example: Part part = mimeMultipart.getBodyPart(i);
-            //          String contentType = part.getContentType();
-            //          InputStream inputStream = part.getInputStream();
-        }
+    @After
+    public void tearDown() throws IOException {
+        mockWebServer.shutdown();
     }
 
-    // A custom DataSource to convert the string into an InputStream for MimeMultipart
-    private static class InputStreamDataSource extends javax.mail.util.ByteArrayDataSource {
-        public InputStreamDataSource(String data) throws IOException {
-            super(data.getBytes(StandardCharsets.UTF_8), "multipart/form-data");
-        }
+    @Test
+    public void testInterceptor() throws IOException {
+        // Start the mock server
+        mockWebServer.start();
+
+        // Enqueue a mock response for the interceptor to handle
+        mockWebServer.enqueue(new MockResponse().setBody("Mock Response"));
+
+        // Create a request using the mock server's URL
+        Request request = new Request.Builder().url(mockWebServer.url("/")).build();
+
+        // Create an interceptor chain with a mock request
+        okhttp3.Interceptor.Chain chain = new okhttp3.Interceptor.Chain() {
+            @Override
+            public Request request() {
+                return request;
+            }
+
+            @Override
+            public Response proceed(Request request) throws IOException {
+                // This is where the interceptor's logic is executed
+                return new Response.Builder()
+                        .request(request)
+                        .protocol(okhttp3.Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body(okhttp3.ResponseBody.create("Mock Response", null))
+                        .build();
+            }
+
+            @Override
+            public Interceptor.Chain withConnectTimeout(int timeout, TimeUnit unit) {
+                return this;
+            }
+
+            @Override
+            public Interceptor.Chain withReadTimeout(int timeout, TimeUnit unit) {
+                return this;
+            }
+
+            @Override
+            public Interceptor.Chain withWriteTimeout(int timeout, TimeUnit unit) {
+                return this;
+            }
+        };
+
+        // Call the intercept method and get the response
+        Response response = myInterceptor.intercept(chain);
+
+        // Assert that the response is not null
+        assertNotNull(response);
+
+        // Assert that the response body is as expected
+        assertEquals("Mock Response", response.body().string());
+
+        // Assert that the interceptor made the expected request
+        RecordedRequest recordedRequest = mockWebServer.takeRequest();
+        assertEquals("/", recordedRequest.getPath());
     }
 }
