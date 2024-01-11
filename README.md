@@ -1,91 +1,45 @@
-import okhttp3.Interceptor;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+public class PDFComparator {
 
-public class MyInterceptorTest {
+    public static void main(String[] args) {
+        String filePath1 = "path/to/first/file.pdf";
+        String filePath2 = "path/to/second/file.pdf";
 
-    private MockWebServer mockWebServer;
-    private MyInterceptor myInterceptor;
+        try {
+            String checksum1 = calculateChecksum(filePath1);
+            String checksum2 = calculateChecksum(filePath2);
 
-    @Before
-    public void setUp() {
-        mockWebServer = new MockWebServer();
-        myInterceptor = new MyInterceptor();
+            if (checksum1.equals(checksum2)) {
+                System.out.println("Checksums are the same.");
+            } else {
+                System.out.println("Checksums are different.");
+            }
+        } catch (IOException | NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
     }
 
-    @After
-    public void tearDown() throws IOException {
-        mockWebServer.shutdown();
-    }
+    private static String calculateChecksum(String filePath) throws IOException, NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        FileInputStream fis = new FileInputStream(filePath);
+        byte[] dataBytes = new byte[1024];
 
-    @Test
-    public void testInterceptor() throws IOException {
-        // Start the mock server
-        mockWebServer.start();
+        int bytesRead;
+        while ((bytesRead = fis.read(dataBytes)) != -1) {
+            md.update(dataBytes, 0, bytesRead);
+        }
 
-        // Enqueue a mock response for the interceptor to handle
-        mockWebServer.enqueue(new MockResponse().setBody("Mock Response"));
+        byte[] mdBytes = md.digest();
 
-        // Create a request using the mock server's URL
-        Request request = new Request.Builder().url(mockWebServer.url("/")).build();
+        StringBuilder sb = new StringBuilder();
+        for (byte mdByte : mdBytes) {
+            sb.append(Integer.toString((mdByte & 0xff) + 0x100, 16).substring(1));
+        }
 
-        // Create an interceptor chain with a mock request
-        okhttp3.Interceptor.Chain chain = new okhttp3.Interceptor.Chain() {
-            @Override
-            public Request request() {
-                return request;
-            }
-
-            @Override
-            public Response proceed(Request request) throws IOException {
-                // This is where the interceptor's logic is executed
-                return new Response.Builder()
-                        .request(request)
-                        .protocol(okhttp3.Protocol.HTTP_1_1)
-                        .code(200)
-                        .message("OK")
-                        .body(okhttp3.ResponseBody.create("Mock Response", null))
-                        .build();
-            }
-
-            @Override
-            public Interceptor.Chain withConnectTimeout(int timeout, TimeUnit unit) {
-                return this;
-            }
-
-            @Override
-            public Interceptor.Chain withReadTimeout(int timeout, TimeUnit unit) {
-                return this;
-            }
-
-            @Override
-            public Interceptor.Chain withWriteTimeout(int timeout, TimeUnit unit) {
-                return this;
-            }
-        };
-
-        // Call the intercept method and get the response
-        Response response = myInterceptor.intercept(chain);
-
-        // Assert that the response is not null
-        assertNotNull(response);
-
-        // Assert that the response body is as expected
-        assertEquals("Mock Response", response.body().string());
-
-        // Assert that the interceptor made the expected request
-        RecordedRequest recordedRequest = mockWebServer.takeRequest();
-        assertEquals("/", recordedRequest.getPath());
+        return sb.toString();
     }
 }
