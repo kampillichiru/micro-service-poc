@@ -1,45 +1,88 @@
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import { TestBed } from '@angular/core/testing';
+import { TestWorkSpaceService } from './document-workspace.service';
 
-public class PDFComparator {
+describe('TestWorkSpaceService', () => {
+  let service: TestWorkSpaceService;
 
-    public static void main(String[] args) {
-        String filePath1 = "path/to/first/file.pdf";
-        String filePath2 = "path/to/second/file.pdf";
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [TestWorkSpaceService]
+    });
+    service = TestBed.inject(TestWorkSpaceService);
+  });
 
-        try {
-            String checksum1 = calculateChecksum(filePath1);
-            String checksum2 = calculateChecksum(filePath2);
+  it('should be created', () => {
+    expect(service).toBeTruthy();
+  });
 
-            if (checksum1.equals(checksum2)) {
-                System.out.println("Checksums are the same.");
-            } else {
-                System.out.println("Checksums are different.");
-            }
-        } catch (IOException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-    }
+  describe('addDocument', () => {
+    it('should add a document correctly', async () => {
+      // Mock file and documentIndex
+      const file = new File(['file content'], 'filename.pdf');
+      const documentIndex = 0;
 
-    private static String calculateChecksum(String filePath) throws IOException, NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        FileInputStream fis = new FileInputStream(filePath);
-        byte[] dataBytes = new byte[1024];
+      await service.addDocument(file, documentIndex);
 
-        int bytesRead;
-        while ((bytesRead = fis.read(dataBytes)) != -1) {
-            md.update(dataBytes, 0, bytesRead);
-        }
+      expect(service.documents.mergedDocument.length).toBe(1);
+      expect(service.documents.mergedDocument[0].fileName).toBe('filename.pdf');
+      // Add more expectations as needed
+    });
+    // Add more test cases for error handling, etc.
+  });
 
-        byte[] mdBytes = md.digest();
+describe('my arrangment', () => {
+  it('should ', () => {
+    // Mock data
+    const classifications = [
+      { pageNumber: 1, indexCode: 'A' },
+      { pageNumber: 2, indexCode: 'B' },
+    ];
 
-        StringBuilder sb = new StringBuilder();
-        for (byte mdByte : mdBytes) {
-            sb.append(Integer.toString((mdByte & 0xff) + 0x100, 16).substring(1));
-        }
+    // Mock mergedDocument
+    service.documents.mergedDocument = [
+      { documentNumber: 1, startPageNumber: 1, endPageNumber: 2 }
+    ];
 
-        return sb.toString();
-    }
-}
+    const rearrangedClassifications = service.reArrangeClassifications(classifications);
+
+    // Add expectations to verify the rearrangement
+  });
+
+  it('should  1', () => {
+    // Mock data
+    const classifications = [
+      { pageNumber: 1, indexCode: 'A' },
+      { pageNumber: 2, indexCode: 'B' },
+      // Add more classifications as needed
+    ];
+
+    // Mock mergedDocument
+    service.documents.mergedDocument = [
+      { documentNumber: 1, startPageNumber: 1, endPageNumber: 2 },
+      { documentNumber: 2, startPageNumber: 3, endPageNumber: 4 },
+      // Add more mergedDocument entries as needed
+    ];
+
+    const rearrangedClassifications = service.reArrangeClassifications(classifications);
+
+    // Add expectations to verify the rearrangement
+  });
+
+  it('should', () => {
+    // Mock data
+    const classifications = [];
+
+    // Mock mergedDocument
+    service.documents.mergedDocument = [
+      { documentNumber: 1, startPageNumber: 1, endPageNumber: 2 }
+    ];
+
+    const rearrangedClassifications = service.reArrangeClassifications(classifications);
+
+    // Add expectations to verify the behavior when classifications is empty
+  });
+});
+
+
+  // Add test cases for other methods like setStartAndEndPageNumbersToDocument, updateIndexesCodes, getUniqueCategories
+});
