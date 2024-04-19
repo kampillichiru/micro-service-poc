@@ -18,7 +18,7 @@ restquest Body:
           "bool": {
             "should": [
               {"match_phrase": {"name": "MY_RESPONSE"}},
-              {"match_phrase": {"name": "LESTR_FEIGN_REQUEST"}}
+              {"match_phrase": {"name": "My Request_REQUEST"}}
             ],
             "minimum_should_match": 1
           }
