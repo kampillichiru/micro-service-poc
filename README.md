@@ -59,7 +59,7 @@ Response body:
       "sum_other_doc_count": 0,
       "buckets": [
         {
-          "key": "LESTR_FEIGN_RESPONSE",
+          "key": "FEIGN_RESPONSE",
           "doc_count": 657618,
           "status_ranges": {
             "buckets": [
