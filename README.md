@@ -448,3 +448,77 @@ public class ElasticsearchService {
     }
 }
 With this approach, your code becomes more elegant, maintainable, and less error-prone. You can easily manipulate the request and response structures without worrying about JSON serialization and deserialization logic.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ public static SearchRequest buildSearchRequest() {
+        // Construct the search source builder
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        // Fields to include
+        searchSourceBuilder.fetchSource(new String[]{"status_code", "name", "@timestamp"}, null);
+
+        // Construct the query
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+        // Filter for status code range
+        RangeQueryBuilder statusCodeRangeQuery = QueryBuilders.rangeQuery("status_code").gte(100).lte(600);
+        boolQueryBuilder.filter(statusCodeRangeQuery);
+
+        // Nested bool query for name matching
+        BoolQueryBuilder nameBoolQuery = QueryBuilders.boolQuery();
+        nameBoolQuery.should(new MatchPhraseQueryBuilder("name", "MY_RESPONSE"));
+        nameBoolQuery.should(new MatchPhraseQueryBuilder("name", "My Request_REQUEST"));
+        nameBoolQuery.minimumShouldMatch(1);
+
+        boolQueryBuilder.filter(nameBoolQuery);
+
+        // Filter for timestamp range
+        RangeQueryBuilder timestampRangeQuery = QueryBuilders.rangeQuery("@timestamp")
+                .format("strict_date_optional_time")
+                .gte("2023-03-25T00:29:08.691Z");
+        boolQueryBuilder.filter(timestampRangeQuery);
+
+        searchSourceBuilder.query(boolQueryBuilder);
+
+        // Aggregations
+        searchSourceBuilder.aggregation(
+            AggregationBuilders.terms("api_name").field("name.keyword")
+                .subAggregation(
+                    AggregationBuilders.range("status_ranges").field("status_code")
+                        .addRange(200, 299, "SUCCESS")
+                        .addRange(400, 499, "CS_ERROR")
+                        .addRange(500, 599, "SS_ERROR")
+                )
+        );
+
+        // Construct the search request
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.source(searchSourceBuilder);
+
+        return searchRequest;
+    }
