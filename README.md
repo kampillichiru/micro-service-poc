@@ -475,50 +475,53 @@ With this approach, your code becomes more elegant, maintainable, and less error
 
 
 
- public static SearchRequest buildSearchRequest() {
-        // Construct the search source builder
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+vimport org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.entity.StringEntity; // Add this import
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
-        // Fields to include
-        searchSourceBuilder.fetchSource(new String[]{"status_code", "name", "@timestamp"}, null);
+public class GetRequestWithBodyExample {
 
-        // Construct the query
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+    public static void main(String[] args) {
+        try {
+            // Create HttpClient instance
+            CloseableHttpClient httpClient = HttpClients.createDefault();
 
-        // Filter for status code range
-        RangeQueryBuilder statusCodeRangeQuery = QueryBuilders.rangeQuery("status_code").gte(100).lte(600);
-        boolQueryBuilder.filter(statusCodeRangeQuery);
+            // Create HttpGet instance with URL
+            HttpGet httpGet = new HttpGet("https://example.com/api/resource");
 
-        // Nested bool query for name matching
-        BoolQueryBuilder nameBoolQuery = QueryBuilders.boolQuery();
-        nameBoolQuery.should(new MatchPhraseQueryBuilder("name", "MY_RESPONSE"));
-        nameBoolQuery.should(new MatchPhraseQueryBuilder("name", "My Request_REQUEST"));
-        nameBoolQuery.minimumShouldMatch(1);
+            // Add request body (optional)
+            String requestBody = "{\"key\": \"value\"}";
+            httpGet.setEntity(new StringEntity(requestBody));
 
-        boolQueryBuilder.filter(nameBoolQuery);
+            // Execute the request
+            CloseableHttpResponse response = httpClient.execute(httpGet);
 
-        // Filter for timestamp range
-        RangeQueryBuilder timestampRangeQuery = QueryBuilders.rangeQuery("@timestamp")
-                .format("strict_date_optional_time")
-                .gte("2023-03-25T00:29:08.691Z");
-        boolQueryBuilder.filter(timestampRangeQuery);
+            // Get the response entity
+            HttpEntity entity = response.getEntity();
 
-        searchSourceBuilder.query(boolQueryBuilder);
+            // Print the response
+            if (entity != null) {
+                System.out.println(EntityUtils.toString(entity));
+            }
 
-        // Aggregations
-        searchSourceBuilder.aggregation(
-            AggregationBuilders.terms("api_name").field("name.keyword")
-                .subAggregation(
-                    AggregationBuilders.range("status_ranges").field("status_code")
-                        .addRange(200, 299, "SUCCESS")
-                        .addRange(400, 499, "CS_ERROR")
-                        .addRange(500, 599, "SS_ERROR")
-                )
-        );
+            // Close the response
+            response.close();
 
-        // Construct the search request
-        SearchRequest searchRequest = new SearchRequest();
-        searchRequest.source(searchSourceBuilder);
-
-        return searchRequest;
+            // Close the HttpClient
+            httpClient.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
+}
+
+<dependency>
+    <groupId>org.apache.httpcomponents</groupId>
+    <artifactId>httpclient</artifactId>
+    <version>4.5.13</version> <!-- Or the latest version available -->
+</dependency>
+
