@@ -466,62 +466,87 @@ With this approach, your code becomes more elegant, maintainable, and less error
 
 
 
+import org.apache.http.HttpHost;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.elasticsearch.core.ElasticsearchTemplate;
 
+@Configuration
+public class ElasticsearchConfig {
 
+    @Value("${elasticsearch.host}")
+    private String host;
 
+    @Value("${elasticsearch.port}")
+    private int port;
 
+    @Value("${elasticsearch.username}")
+    private String username;
 
+    @Value("${elasticsearch.password}")
+    private String password;
 
+    @Bean
+    public RestHighLevelClient restHighLevelClient() {
+        return new RestHighLevelClient(
+                RestClient.builder(
+                        new HttpHost(host, port, "http"))
+                        .setHttpClientConfigCallback(httpClientBuilder ->
+                                httpClientBuilder.setDefaultCredentialsProvider(
+                                        new BasicCredentialsProvider() {{
+                                            setCredentials(AuthScope.ANY,
+                                                    new UsernamePasswordCredentials(username, password));
+                                        }}
+                                )
+                        )
+        );
+    }
 
-
-
-vimport org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.entity.StringEntity; // Add this import
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-
-public class GetRequestWithBodyExample {
-
-    public static void main(String[] args) {
-        try {
-            // Create HttpClient instance
-            CloseableHttpClient httpClient = HttpClients.createDefault();
-
-            // Create HttpGet instance with URL
-            HttpGet httpGet = new HttpGet("https://example.com/api/resource");
-
-            // Add request body (optional)
-            String requestBody = "{\"key\": \"value\"}";
-            httpGet.setEntity(new StringEntity(requestBody));
-
-            // Execute the request
-            CloseableHttpResponse response = httpClient.execute(httpGet);
-
-            // Get the response entity
-            HttpEntity entity = response.getEntity();
-
-            // Print the response
-            if (entity != null) {
-                System.out.println(EntityUtils.toString(entity));
-            }
-
-            // Close the response
-            response.close();
-
-            // Close the HttpClient
-            httpClient.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    @Bean
+    public ElasticsearchTemplate elasticsearchTemplate() {
+        return new ElasticsearchTemplate(restHighLevelClient());
     }
 }
 
+
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.elasticsearch.core.ElasticsearchTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class ElasticsearchService {
+
+    private final ElasticsearchTemplate elasticsearchTemplate;
+
+    @Autowired
+    public ElasticsearchService(ElasticsearchTemplate elasticsearchTemplate) {
+        this.elasticsearchTemplate = elasticsearchTemplate;
+    }
+
+    public SearchResponse search(String indexName, String query) {
+        return elasticsearchTemplate.getClient().prepareSearch(indexName)
+                .setQuery(QueryBuilders.queryStringQuery(query))
+                .get();
+    }
+}
+
+
+
+
 <dependency>
-    <groupId>org.apache.httpcomponents</groupId>
-    <artifactId>httpclient</artifactId>
-    <version>4.5.13</version> <!-- Or the latest version available -->
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
 </dependency>
+
+<dependency>
+    <groupId>org.elasticsearch.client</groupId>
+    <artifactId>elasticsearch-rest-high-level-client</artifactId>
+    <version>7.15.2</version> <!-- Replace with your desired Elasticsearch version -->
+</dependency>
+
 
