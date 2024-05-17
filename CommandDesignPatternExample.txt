@@ -1,0 +1,206 @@
+Controller to Handle Requests:
+
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api")
+public class ApiController {
+
+    @Autowired
+    private ApiServiceExecutor apiServiceExecutor;
+
+    @PostMapping("/execute")
+    public ResponseEntity<List<Object>> executeApis(@RequestParam String input) {
+        List<Object> results = apiServiceExecutor.executeApis(input);
+        return ResponseEntity.ok(results);
+    }
+}
+
+ Update the Service Executor:
+ 
+ import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+@Service
+public class ApiServiceExecutor {
+
+    @Autowired
+    private CommandFactory commandFactory;
+
+    @Autowired
+    private ApiMappingConfig apiMappingConfig;
+
+    public List<Object> executeApis(String input) {
+        List<String> commandNames = apiMappingConfig.getMappings(input);
+        if (commandNames == null) {
+            throw new IllegalArgumentException("Invalid input: " + input);
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(commandNames.size());
+        List<Future<Object>> futures = new ArrayList<>();
+
+        for (String commandName : commandNames) {
+            Command command = commandFactory.getCommand(commandName);
+            futures.add(executor.submit(command::execute));
+        }
+
+        List<Object> results = new ArrayList<>();
+        for (Future<Object> future : futures) {
+            try {
+                results.add(future.get());
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+
+        executor.shutdown();
+        return results;
+    }
+}
+
+
+Update the Configuration Loader:
+
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
+import org.yaml.snakeyaml.Yaml;
+
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Component
+public class ApiMappingConfig {
+
+    private Map<String, List<String>> mappings = new HashMap<>();
+
+    @Value("classpath:config/*.yml")
+    private Resource[] resources;
+
+    @PostConstruct
+    public void loadConfigurations() {
+        Yaml yaml = new Yaml();
+
+        for (Resource resource : resources) {
+            try (InputStream in = resource.getInputStream()) {
+                Map<String, Map<String, List<String>>> config = yaml.load(in);
+                if (config != null) {
+                    Map<String, List<String>> apiMappings = config.get("api").get("mappings");
+                    if (apiMappings != null) {
+                        mappings.putAll(apiMappings);
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public List<String> getMappings(String input) {
+        return mappings.get(input);
+    }
+}
+
+
+
+Create a Command Factory:
+
+@Component
+public class CommandFactory {
+
+    @Autowired
+    private List<Command> commands;
+
+    public Command getCommand(String commandName) {
+        return commands.stream()
+                .filter(command -> command.getClass().getSimpleName().equals(commandName))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid command name: " + commandName));
+    }
+}
+
+
+Implement Command Classes for Each API:
+
+@Service
+public class Api1Command implements Command {
+
+    @Override
+    public Object execute() {
+        // Logic for API 1
+        return "Result from API 1";
+    }
+}
+
+// Similar implementations for other APIs: Api2Command, Api3Command, etc.
+
+
+Define the Command Interface:
+
+public interface Command {
+    Object execute();
+}
+
+
+
+Organize Configuration Files:
+
+src/main/resources/config/abc.yml
+src/main/resources/config/bcd.yml
+src/main/resources/config/drf.yml
+
+
+Example abc.yml:
+
+api:
+  mappings:
+    abc:
+      - Api1Service
+      - Api2Service
+      - Api3Service
+      - Api4Service
+      - Api5Service
+      - Api6Service
+      - Api7Service
+      - Api8Service
+      - Api9Service
+      - Api10Service
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
