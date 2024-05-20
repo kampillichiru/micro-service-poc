@@ -1,0 +1,32 @@
+Step 1: Clone the Original Repository
+
+git clone https://github.com/GIT-ORG/My-Repo.git
+cd My-Repo
+
+
+Step 2: Create New Repositories in the New Organization
+
+# Example for creating a repository for My-Folder-1
+gh repo create GIT-ORG-2/My-Folder-1-Repo --public
+
+
+Step 3: Add Remote Repositories
+
+# Adding remote for My-Folder-1-Repo
+git remote add My-Folder-1-Repo https://github.com/GIT-ORG-2/My-Folder-1-Repo.git
+
+Step 4: Use git subtree to Push Folders to the main Branch
+
+# For My-Folder-1
+git subtree split --prefix=My-Folder-1 -b My-Folder-1-branch
+git push My-Folder-1-Repo My-Folder-1-branch:master
+
+
+Step 5: Clean Up Local Branches
+
+git branch -D My-Folder-1-branch
+git branch -D My-Folder-2-branch
+
+
+
+
