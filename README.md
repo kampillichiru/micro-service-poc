@@ -1,71 +1,88 @@
-
-# Use an official openjdk runtime as a parent image
-FROM openjdk:11-jre-slim
-
-# Set environment variables for Chrome and ChromeDriver versions
-ENV CHROME_VERSION="google-chrome-stable"
-ENV CHROMEDRIVER_VERSION="114.0.5735.90"
-
-# Install dependencies and Chrome
-RUN apt-get update && \
-    apt-get install -y wget gnupg unzip curl && \
-    curl -sSL https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' && \
-    apt-get update && \
-    apt-get install -y ${CHROME_VERSION} && \
-    apt-get clean
-
-# Install ChromeDriver
-RUN wget -q -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    rm /tmp/chromedriver.zip
-
-# Add user for running Selenium
-RUN useradd -m selenium && \
-    mkdir -p /home/selenium/Downloads && \
-    chown -R selenium:selenium /home/selenium
-
-# Set the user to "selenium"
-USER selenium
-
-# Set the working directory
-WORKDIR /home/selenium
-
-# Expose the port (if your Spring Boot application runs on a specific port)
-EXPOSE 8080
-
-# Copy the Spring Boot application jar to the container
-COPY target/your-spring-boot-app.jar /home/selenium/app.jar
-
-# Run the Spring Boot application
-ENTRYPOINT ["java", "-jar", "/home/selenium/app.jar"]
-
-
-
-
-
-
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.springframework.context.annotation.Bean;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import java.util.Map;
 
 @Configuration
-public class SeleniumConfig {
+@ConfigurationProperties(prefix = "feign.clients")
+public class FeignClientsProperties {
+    private Map<String, FeignClientProperties> configs;
 
-    @Bean
-    public WebDriver webDriver() {
-        // Set system property for ChromeDriver
-        System.setProperty("webdriver.chrome.driver", "/usr/local/bin/chromedriver");
-        
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless"); // Run Chrome in headless mode
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--window-size=1920,1080");
+    public Map<String, FeignClientProperties> getConfigs() {
+        return configs;
+    }
 
-        return new ChromeDriver(options);
+    public void setConfigs(Map<String, FeignClientProperties> configs) {
+        this.configs = configs;
+    }
+
+    public static class FeignClientProperties {
+        private String url;
+        private String username;
+        private String password;
+
+        // getters and setters
+    }
+}
+
+
+feign:
+  clients:
+    myApp-1:
+      url: http://url-for-myapp-1.com
+      username: usernameForMyApp1
+      password: passwordForMyApp1
+    myApp-2:
+      url: http://url-for-myapp-2.com
+      username: usernameForMyApp2
+      password: passwordForMyApp2
+
+
+import feign.Feign;
+import feign.auth.BasicAuthRequestInterceptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class DynamicFeignClientFactory {
+
+    @Autowired
+    private FeignClientsProperties feignClientsProperties;
+
+    public <T> T createClient(Class<T> clientClass, String appName) {
+        FeignClientsProperties.FeignClientProperties properties = feignClientsProperties.getConfigs().get(appName);
+        if (properties == null) {
+            throw new IllegalArgumentException("No configuration found for application: " + appName);
+        }
+
+        return Feign.builder()
+                .requestInterceptor(new BasicAuthRequestInterceptor(properties.getUsername(), properties.getPassword()))
+                .target(clientClass, properties.getUrl());
+    }
+}
+
+
+import org.springframework.web.bind.annotation.GetMapping;
+
+public interface DynamicFeignClient {
+    @GetMapping("/some-endpoint")
+    String getSomeData();
+}
+
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class MyController {
+
+    @Autowired
+    private DynamicFeignClientFactory feignClientFactory;
+
+    @GetMapping("/call-api/{appName}")
+    public String callApi(@PathVariable String appName) {
+        DynamicFeignClient client = feignClientFactory.createClient(DynamicFeignClient.class, appName);
+        return client.getSomeData();
     }
 }
