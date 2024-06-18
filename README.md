@@ -1,6 +1,10 @@
-    - name: Set up Maven settings.xml
-      run: |
-        mkdir -p ~/.m2
-        cp .github/settings.xml.template ~/.m2/settings.xml
-        sed -i 's/\${NEXUS_USERNAME}/'"${{ secrets.NEXUS_USERNAME }}"'/' ~/.m2/settings.xml
-        sed -i 's/\${NEXUS_PASSWORD}/'"${{ secrets.NEXUS_PASSWORD }}"'/' ~/.m2/settings.xml
+   <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>3.0.0-M1</version>
+        <configuration>
+          <tagNameFormat>@{project.version}</tagNameFormat>
+          <goals>clean deploy</goals>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
+        </configuration>
+      </plugin>
