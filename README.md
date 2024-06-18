@@ -1,102 +1,95 @@
-Core Java Concepts:
+name: PR Triggered Build and Snapshot Upload
 
-Variables, data types, and operators
-Control flow (if-else, switch-case, loops)
-Methods and functions
-Classes and objects
-Inheritance, encapsulation, polymorphism, and abstraction
-Exception Handling:
+on:
+  pull_request:
+    types: [opened, synchronize]
 
-try-catch blocks
-throw and throws keywords
-Checked vs unchecked exceptions
-Custom exception classes
-Collections Framework:
+jobs:
+  build-and-upload-snapshot:
+    runs-on: ubuntu-latest
 
-Lists (ArrayList, LinkedList)
-Sets (HashSet, TreeSet)
-Maps (HashMap, TreeMap)
-Iterators and foreach loop
-Concurrency:
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-Threads and Runnable interface
-Synchronization and thread safety
-Volatile keyword
-Thread pools and Executors
-File Handling:
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
 
-Reading and writing files
-File and directory manipulation
-Streams (FileInputStream, FileOutputStream, etc.)
-Java Generics:
+      - name: Build with Maven
+        run: mvn clean install -B
 
-Generic classes and methods
-Wildcards (<? extends T>, <? super T>)
-Type erasure and limitations
-Java I/O:
+      - name: Upload Snapshot to Nexus
+        run: |
+          mvn deploy -DskipTests \
+            -Dmaven.javadoc.skip=true \
+            -Dnexus.username=$NEXUS_USERNAME \
+            -Dnexus.password=$NEXUS_PASSWORD \
+            -Dnexus.url=$NEXUS_URL \
+            -DskipStaging=true \
+            -Dmaven.deploy.skip=true \
+            -DaltDeploymentRepository=snapshot-repo::default::${NEXUS_URL}/repository/maven-snapshots/
 
-InputStreams and OutputStreams
-Readers and Writers
-Serialization and Deserialization
-Java Database Connectivity (JDBC):
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          NEXUS_URL: https://your-nexus-url
 
-Connecting to databases
-Executing SQL queries
-Handling result sets
-PreparedStatements and transactions
-Java 8 Features:
 
-Lambda expressions
-Stream API (map, filter, reduce)
-Optional class
-Default and static methods in interfaces
-Unit Testing:
 
-Introduction to JUnit or TestNG
-Writing and running test cases
-Assertions and test fixtures
-Servlets and JSP:
 
-Basics of servlets
-Handling HTTP requests and responses
-JSP tags and expression language (EL)
-MVC architecture using servlets and JSP
-Spring Framework (Basic Concepts):
 
-Dependency Injection (DI) and Inversion of Control (IoC)
-Spring Beans and ApplicationContext
-Spring MVC basics (Controllers, Views, DispatcherServlet)
-RESTful Web Services:
 
-Basics of REST architecture
-Implementing REST APIs using JAX-RS (or Spring REST)
-Hibernate or Java Persistence API (JPA):
 
-Object-relational mapping (ORM)
-Entity, EntityManager, and EntityManagerFactory
-CRUD operations with Hibernate/JPA
-Design Patterns:
 
-Creational patterns (Factory, Singleton, Builder)
-Structural patterns (Adapter, Facade, Decorator)
-Behavioral patterns (Observer, Strategy, Iterator)
-Version Control Systems:
 
-Git basics (commit, push, pull, merge)
-Branching and merging strategies
-Build Tools:
+name: Manual Release Build and Deploy
 
-Maven or Gradle for dependency management and project build automation
-Debugging and Profiling:
+on:
+  workflow_dispatch:
 
-Using IDE debuggers effectively
-Profiling tools for performance analysis
-Security:
+jobs:
+  release-and-deploy:
+    runs-on: ubuntu-latest
 
-Secure coding practices
-Authentication and authorization basics
-HTTPS and SSL/TLS
-Agile Methodologies:
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-Scrum, Kanban, or other agile frameworks
-Sprint planning, daily stand-ups, retrospectives
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+
+      - name: Set up Git
+        run: git config --global user.email "actions@github.com" && git config --global user.name "GitHub Actions"
+
+      - name: Determine next version and release
+        id: next-version
+        run: |
+          current_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          next_version=$(echo $current_version | sed 's/-SNAPSHOT//')
+          echo "::set-output name=next_version::$next_version"
+
+      - name: Release version and deploy to Nexus
+        run: |
+          mvn versions:set -DnewVersion=${{ steps.next-version.outputs.next_version }} \
+            && mvn clean deploy -DskipTests \
+            -Dmaven.javadoc.skip=true \
+            -Dnexus.username=$NEXUS_USERNAME \
+            -Dnexus.password=$NEXUS_PASSWORD \
+            -Dnexus.url=$NEXUS_URL \
+            -DskipStaging=true \
+            -Dmaven.deploy.skip=true \
+            -DaltDeploymentRepository=release-repo::default::${NEXUS_URL}/repository/maven-releases/
+
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          NEXUS_URL: https://your-nexus-url
+
+      - name: Commit and push version change
+        run: |
+          git commit -am "Prepare release ${{ steps.next-version.outputs.next_version }}"
+          git push
