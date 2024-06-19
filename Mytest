@@ -1,58 +1,49 @@
-name: Release
+name: Build and Release
 
-on:
-  workflow_dispatch:  # Allow manual triggering of the workflow
-  push:
-    branches:
-      - main
+on: [push]
 
 jobs:
-  release:
-    name: Release Workflow
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Java
-        uses: actions/setup-java@v2
-        with:
-          distribution: 'adopt'
-          java-version: '11'  # Specify your Java version
+    - name: Set up JDK 8
+      uses: actions/setup-java@v2
+      with:
+        java-version: '8'
 
-      - name: Push release version to Nexus
-        run: |
-          mvn clean deploy -DskipTests --settings .maven/nexus-settings.xml
-        env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+    - name: Set up Maven
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'temurin'
+        java-version: '8'
+        cache: 'maven'
 
-      - name: Update release version in all pom.xml files
-        run: |
-          RELEASE_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed 's/-SNAPSHOT//')
-          mvn versions:set -DnewVersion=$RELEASE_VERSION
-          mvn versions:commit
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add '**/pom.xml'
-          git commit -m "Release version $RELEASE_VERSION"
-          git tag -a "v$RELEASE_VERSION" -m "Release version $RELEASE_VERSION"
-          git push origin main --tags
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Update to next snapshot version in all pom.xml files
-        run: |
-          RELEASE_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed 's/-SNAPSHOT//')
-          SNAPSHOT_VERSION=$(echo $RELEASE_VERSION | awk -F. '{printf "%d.%d.%d-SNAPSHOT", $1, $2, $3+1}')
-          mvn versions:set -DnewVersion=$SNAPSHOT_VERSION
-          mvn versions:commit
-          git add '**/pom.xml'
-          git commit -m "Update to next snapshot version $SNAPSHOT_VERSION"
-          git push origin main
+    - name: Build with Maven
+      run: mvn clean install
 
-      - name: Push snapshot version to Nexus
-        run: |
-          mvn deploy -DskipTests --settings .maven/nexus-settings.xml
-        env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+    - name: Deploy with Maven
+      run: mvn clean deploy
+
+    - name: Prepare Release with Maven
+      run: mvn release:clean release:prepare
+
+    - name: Perform Release with Maven
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Set up Git credentials for release:perform
+        git config --global credential.helper store
+        echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
+        # Perform the release
+        mvn release:perform
