@@ -1,95 +1,55 @@
-name: PR Triggered Build and Snapshot Upload
+name: Release
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  push:
+    branches:
+      - main
 
 jobs:
-  build-and-upload-snapshot:
+  release:
+    name: Release Workflow
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up JDK 8
-        uses: actions/setup-java@v1
+      - name: Set up Java
+        uses: actions/setup-java@v2
         with:
-          java-version: 1.8
+          distribution: 'adopt'
+          java-version: '11'  # Specify your Java version
 
-      - name: Build with Maven
-        run: mvn clean install -B
-
-      - name: Upload Snapshot to Nexus
+      - name: Push release version to Nexus
         run: |
-          mvn deploy -DskipTests \
-            -Dmaven.javadoc.skip=true \
-            -Dnexus.username=$NEXUS_USERNAME \
-            -Dnexus.password=$NEXUS_PASSWORD \
-            -Dnexus.url=$NEXUS_URL \
-            -DskipStaging=true \
-            -Dmaven.deploy.skip=true \
-            -DaltDeploymentRepository=snapshot-repo::default::${NEXUS_URL}/repository/maven-snapshots/
-
+          mvn clean deploy -DskipTests --settings .maven/nexus-settings.xml
         env:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-          NEXUS_URL: https://your-nexus-url
 
-
-
-
-
-
-
-
-
-name: Manual Release Build and Deploy
-
-on:
-  workflow_dispatch:
-
-jobs:
-  release-and-deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up JDK 8
-        uses: actions/setup-java@v1
-        with:
-          java-version: 1.8
-
-      - name: Set up Git
-        run: git config --global user.email "actions@github.com" && git config --global user.name "GitHub Actions"
-
-      - name: Determine next version and release
-        id: next-version
+      - name: Update release version in pom.xml
         run: |
-          current_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          next_version=$(echo $current_version | sed 's/-SNAPSHOT//')
-          echo "::set-output name=next_version::$next_version"
+          RELEASE_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed 's/-SNAPSHOT//')
+          mvn versions:set -DnewVersion=$RELEASE_VERSION
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add pom.xml
+          git commit -m "Release version $RELEASE_VERSION"
+          git tag -a "v$RELEASE_VERSION" -m "Release version $RELEASE_VERSION"
+          git push origin --tags
 
-      - name: Release version and deploy to Nexus
+      - name: Update to next snapshot version
         run: |
-          mvn versions:set -DnewVersion=${{ steps.next-version.outputs.next_version }} \
-            && mvn clean deploy -DskipTests \
-            -Dmaven.javadoc.skip=true \
-            -Dnexus.username=$NEXUS_USERNAME \
-            -Dnexus.password=$NEXUS_PASSWORD \
-            -Dnexus.url=$NEXUS_URL \
-            -DskipStaging=true \
-            -Dmaven.deploy.skip=true \
-            -DaltDeploymentRepository=release-repo::default::${NEXUS_URL}/repository/maven-releases/
+          RELEASE_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed 's/-SNAPSHOT//')
+          SNAPSHOT_VERSION=$(echo $RELEASE_VERSION | awk -F. '{printf "%d.%d.%d-SNAPSHOT", $1, $2, $3+1}')
+          mvn versions:set -DnewVersion=$SNAPSHOT_VERSION
+          git add pom.xml
+          git commit -m "Update to next snapshot version $SNAPSHOT_VERSION"
+          git push origin main
 
+      - name: Push snapshot version to Nexus
+        run: |
+          mvn deploy -DskipTests --settings .maven/nexus-settings.xml
         env:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-          NEXUS_URL: https://your-nexus-url
-
-      - name: Commit and push version change
-        run: |
-          git commit -am "Prepare release ${{ steps.next-version.outputs.next_version }}"
-          git push
