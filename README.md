@@ -44,38 +44,15 @@ jobs:
 
 
 
-name: Extract Release Version Workflow
-
-on:
-  push:
-    branches:
-      - main  # Adjust to your main branch name
-
-jobs:
-  extract-release-version:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-
-      - name: Set up JDK and Maven
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'  # Adjust to your Java version requirement
-
-      - name: Extract Version from pom.xml
-        id: extract_version
-        run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          echo "::set-output name=version::$VERSION"
-
-      - name: Remove -SNAPSHOT suffix
-        id: remove_snapshot_suffix
-        run: |
-          RELEASE_VERSION=${{ steps.extract_version.outputs.version }}
-          RELEASE_VERSION=${RELEASE_VERSION%-SNAPSHOT}
-          echo "::set-output name=release_version::$RELEASE_VERSION"
-
-      - name: Use Release Version
-        run: echo "Release version is ${{ steps.remove_snapshot_suffix.outputs.release_version }}"
+ - name: Compute next version
+      id: compute_next_version
+      run: |
+        current_version=${{ steps.get_version.outputs.current_version }}
+        # Extract major, minor, and patch versions
+        major=$(echo "$current_version" | cut -d'.' -f1)
+        minor=$(echo "$current_version" | cut -d'.' -f2)
+        patch=$(echo "$current_version" | cut -d'.' -f3)
+        
+        # Increment patch version
+        next_version="$major.$minor.$((patch + 1))"
+        echo "::set-output name=next_version::$next_version"
