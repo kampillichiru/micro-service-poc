@@ -1,19 +1,18 @@
-name: Release
+name: Java CI with Ant
 
 on:
   push:
-    tags:
-      - 'v*'  # Triggers the workflow on version tags
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up JDK 11
       uses: actions/setup-java@v3
@@ -21,14 +20,16 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
 
-    - name: Configure Git
-      run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git config --global credential.helper 'store --file=.git-credentials'
-        echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
+    - name: Cache Ant dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.ivy2/cache
+        key: ${{ runner.os }}-ant-${{ hashFiles('**/*.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-ant-
 
-    - name: Run Maven release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: mvn release:prepare release:perform -Dusername=github-actions[bot] -Dpassword=${{ secrets.GITHUB_TOKEN }}
+    - name: Install Ant
+      run: sudo apt-get install ant -y
+
+    - name: Build with Ant
+      run: ant -f build.xml
