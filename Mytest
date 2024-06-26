@@ -1,51 +1,4 @@
-Repository Refactoring:
-
-Split multiple repositories from the old repository and assigned meaningful, functional names.
-Organizational Transition:
-
-Successfully migrated all repositories to the new X organization.
-Continuous Integration Transition:
-
-Transitioned from Spiceworks Jenkins to GitHub Actions for building artifacts.
-CI/CD Automation:
-
-Implemented GitHub Actions for continuous integration (CI).
-Artifact Management:
-
-Configured and enabled artifact deployment to Nexus repositories for both snapshot and release versions.
-Release Management Automation:
-
-Implemented automated Maven release management processes.
-Code Quality Assurance:
-
-Integrated repositories with SonarQube for comprehensive code quality checks.
-Quality Checks Integration:
-
-Set up automated quality checks to run on each pull request (PR) and commit into the main branch.
-Metrics and Reporting:
-
-Enabled visibility of all relevant metrics through the SonarQube dashboard.
-
-Accomplishments Summary
-
-- Refactored repositories: Split into functional names for clarity.
-- Organizational move: All repositories relocated to new X organization.
-- CI/CD enhancement: Transitioned from Spice Jenkins to GitHub Actions.
-- Automation: Implemented GitHub Actions for continuous integration.
-- Artifact management: Enabled Nexus deployment for snapshots and releases.
-- Release automation: Streamlined Maven release management.
-- Quality integration: Integrated with SonarQube for rigorous code analysis.
-- Automated checks: Quality checks on every PR and commit to main branch.
-- Metrics visibility: All metrics accessible via SonarQube dashboard.
-
-
-| Repository     | Split Repos | New Org | Jenkins to GitHub Actions | GitHub Actions CI | Artifact to Nexus | Auto Maven Release | SonarQube Integration | Quality Checks | SonarQube Dashboard |
-|----------------|-------------|---------|---------------------------|-------------------|-------------------|--------------------|----------------------|----------------|---------------------|
-| **My-X**       | Yes         | Yes     | Yes                       | Yes               | Yes               | Yes                | Yes                  | Yes            | Yes                 |
-| **My-Y**       | Yes         | Yes     | Yes                       | Yes               | Yes               | Yes                | Yes                  | Yes            | Yes                 |
-| **My-Z**       | Yes         | Yes     | Yes                       | Yes               | Yes               | Yes                | Yes                  | Yes            | Yes                 |
-
-Proposed Standards for MY-appp Enhancement
+Proposed Standards for MY-APP Enhancement
 
 1. **Build and Compatibility**:
    - Migrate from Ant to Maven, compatible with JDK 8.
@@ -68,5 +21,4 @@ Proposed Standards for MY-appp Enhancement
 7. **Documentation and Insights**:
    - Include readme file in each repository for clear insights.
 
-These standards aim to modernize MY-appp's development practices, enhance security, and improve overall efficiency and collaboration within the development team.
-
+These standards aim to modernize MY-APP's development practices, enhance security, and improve overall efficiency and collaboration within the development team.
