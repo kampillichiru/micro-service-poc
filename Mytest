@@ -1,24 +1,18 @@
-Proposed Standards for MY-APP Enhancement
-
-1. **Build and Compatibility**:
-   - Migrate from Ant to Maven, compatible with JDK 8.
-
-2. **CI/CD Implementation**:
-   - Implement CI/CD pipeline for automated build and deployment.
-
-3. **Security and Secrets Management**:
-   - Integrate with vault/secrets for sensitive information management.
-
-4. **Code Governance**:
-   - Enforce PR review process to restrict direct pushes to main branch.
-
-5. **Logging Standardization**:
-   - Implement x-minoting for centralized logging.
-
-6. **Artifact Management**:
-   - Automate artifact deployment using GitHub Actions.
-
-7. **Documentation and Insights**:
-   - Include readme file in each repository for clear insights.
-
-These standards aim to modernize MY-APP's development practices, enhance security, and improve overall efficiency and collaboration within the development team.
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+    <id>jar-with-resources</id>
+    <formats>
+        <format>jar</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <fileSets>
+        <fileSet>
+            <directory>src/main/resources</directory>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>**/*.properties</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+</assembly>
