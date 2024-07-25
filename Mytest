@@ -1,41 +1,38 @@
+### Basic Level: Till Java Arrays
 
+**Definition:**  
+Candidates at the basic level should have a fundamental understanding of Java programming, including its syntax and basic concepts. This includes the ability to write simple Java programs, understand and use primitive data types, control flow statements (if-else, switch, loops), and work with arrays. They should be able to perform basic operations such as iterating over arrays, accessing and modifying array elements, and understanding the basic memory structure of arrays.
 
-Task Management System:
+**Skills Expected:**
+- Understanding of Java syntax and basic structure (classes, methods, etc.)
+- Knowledge of primitive data types and variables
+- Ability to use control flow statements (if-else, switch, for, while, do-while loops)
+- Basic understanding of arrays, including declaration, initialization, and basic operations (iterating, accessing, modifying elements)
 
-Basic Features: Create, update, delete tasks, view task details.
-Additional Features:
-Task Prioritization: Allow users to set and update priority levels (e.g., Low, Medium, High) for tasks.
-Due Date Notifications: Implement email notifications or reminders for tasks that are approaching their due date.
-Task Categories: Enable categorization of tasks into different groups (e.g., Work, Personal) and filter tasks by category.
-User Authentication System:
+### Intermediate Level: Till Collections
 
-Basic Features: User registration, login, JWT-based authentication.
-Additional Features:
-Password Reset: Implement a password reset mechanism using email.
-Role-Based Access Control: Define different user roles (e.g., Admin, User) and restrict access to certain endpoints based on roles.
-Account Lockout: Implement account lockout after a specified number of failed login attempts to enhance security.
+**Definition:**  
+Candidates at the intermediate level should possess a deeper understanding of Java programming, extending to the use of more complex data structures and concepts. This includes proficiency with collections, such as lists, sets, and maps. They should be able to utilize Java's collection framework to store, manipulate, and retrieve data efficiently. Understanding the differences between various collections, when to use them, and the basics of algorithms like sorting and searching is also expected.
 
+**Skills Expected:**
+- Proficiency in using Java arrays and performing more complex operations
+- Understanding of and ability to use Java’s collection framework (ArrayList, LinkedList, HashSet, TreeSet, HashMap, TreeMap, etc.)
+- Knowledge of generics and how to use them with collections
+- Ability to implement basic algorithms for sorting and searching
+- Understanding of the performance implications of different data structures
 
+### Advanced Level: Spring Frameworks and API
 
-Product Catalog API:
+**Definition:**  
+Candidates at the advanced level should be proficient in using Java for enterprise-level applications, particularly with the Spring framework. They should understand how to build, deploy, and manage robust and scalable applications. This includes knowledge of Spring Boot, dependency injection, Spring MVC, and RESTful API development. They should also be familiar with concepts like database integration, security, and microservices.
 
-Basic Features: Add, update, view, delete products.
-Additional Features:
-Product Search: Implement a search functionality that allows users to find products by name or category.
-Product Reviews: Allow users to add and view reviews for products, including a rating system (e.g., 1 to 5 stars).
-Pagination and Sorting: Implement pagination and sorting for the product list to improve usability.
-Blog Platform:
+**Skills Expected:**
+- Deep understanding of the Spring framework, including Spring Boot for rapid application development
+- Ability to create and manage Spring-based applications, including configuration, dependency injection, and application context
+- Proficiency in building RESTful APIs using Spring MVC
+- Knowledge of integrating databases with Spring (e.g., using Spring Data JPA)
+- Understanding of Spring Security for securing applications
+- Familiarity with building and deploying microservices using Spring Cloud
+- Experience with advanced topics like transaction management, messaging (e.g., with RabbitMQ or Kafka), and application performance tuning
 
-Basic Features: Create, read, update, delete blog posts.
-Additional Features:
-Post Tags: Allow posts to be tagged with multiple keywords and enable searching by tags.
-Comment System: Implement a commenting system where users can leave comments on blog posts.
-Author Profiles: Create user profiles that include a bio, profile picture, and list of authored posts.
-
-Simple Inventory Management System:
-
-Basic Features: Add, update, delete inventory items, track quantities.
-Additional Features:
-Stock Alerts: Set thresholds for stock levels and receive alerts when items fall below the threshold.
-Inventory Transactions: Track inventory transactions such as purchases and sales, including date and quantity.
-Item Categories: Organize inventory items into categories and allow filtering by category.
+These definitions should help in assessing candidates at different levels based on their knowledge and skills in Java programming and related technologies.
