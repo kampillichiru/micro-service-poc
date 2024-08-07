@@ -1,38 +1,52 @@
-### Basic Level: Till Java Arrays
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-**Definition:**  
-Candidates at the basic level should have a fundamental understanding of Java programming, including its syntax and basic concepts. This includes the ability to write simple Java programs, understand and use primitive data types, control flow statements (if-else, switch, loops), and work with arrays. They should be able to perform basic operations such as iterating over arrays, accessing and modifying array elements, and understanding the basic memory structure of arrays.
+public class PersonFilter {
 
-**Skills Expected:**
-- Understanding of Java syntax and basic structure (classes, methods, etc.)
-- Knowledge of primitive data types and variables
-- Ability to use control flow statements (if-else, switch, for, while, do-while loops)
-- Basic understanding of arrays, including declaration, initialization, and basic operations (iterating, accessing, modifying elements)
+    public static Predicate<Person> filterByAge(int age) {
+        return p -> p.getAge() > age;
+    }
 
-### Intermediate Level: Till Collections
+    public static Predicate<Person> filterByName(String name) {
+        return p -> p.getName().equalsIgnoreCase(name);
+    }
 
-**Definition:**  
-Candidates at the intermediate level should possess a deeper understanding of Java programming, extending to the use of more complex data structures and concepts. This includes proficiency with collections, such as lists, sets, and maps. They should be able to utilize Java's collection framework to store, manipulate, and retrieve data efficiently. Understanding the differences between various collections, when to use them, and the basics of algorithms like sorting and searching is also expected.
+    public static Predicate<Person> filterByCity(String city) {
+        return p -> p.getCity().equalsIgnoreCase(city);
+    }
 
-**Skills Expected:**
-- Proficiency in using Java arrays and performing more complex operations
-- Understanding of and ability to use Java’s collection framework (ArrayList, LinkedList, HashSet, TreeSet, HashMap, TreeMap, etc.)
-- Knowledge of generics and how to use them with collections
-- Ability to implement basic algorithms for sorting and searching
-- Understanding of the performance implications of different data structures
+    public static List<Person> filterPersons(List<Person> persons, Predicate<Person>... filters) {
+        return persons.stream()
+                .filter(combineFilters(filters))
+                .collect(Collectors.toList());
+    }
 
-### Advanced Level: Spring Frameworks and API
+    @SafeVarargs
+    private static Predicate<Person> combineFilters(Predicate<Person>... filters) {
+        Predicate<Person> combinedFilter = filters[0];
+        for (int i = 1; i < filters.length; i++) {
+            combinedFilter = combinedFilter.and(filters[i]);
+        }
+        return combinedFilter;
+    }
 
-**Definition:**  
-Candidates at the advanced level should be proficient in using Java for enterprise-level applications, particularly with the Spring framework. They should understand how to build, deploy, and manage robust and scalable applications. This includes knowledge of Spring Boot, dependency injection, Spring MVC, and RESTful API development. They should also be familiar with concepts like database integration, security, and microservices.
+    public static void main(String[] args) {
+        List<Person> persons = List.of(
+                new Person("Alice", 30, "New York"),
+                new Person("Bob", 25, "San Francisco"),
+                new Person("Charlie", 35, "Los Angeles"),
+                new Person("David", 28, "New York")
+        );
 
-**Skills Expected:**
-- Deep understanding of the Spring framework, including Spring Boot for rapid application development
-- Ability to create and manage Spring-based applications, including configuration, dependency injection, and application context
-- Proficiency in building RESTful APIs using Spring MVC
-- Knowledge of integrating databases with Spring (e.g., using Spring Data JPA)
-- Understanding of Spring Security for securing applications
-- Familiarity with building and deploying microservices using Spring Cloud
-- Experience with advanced topics like transaction management, messaging (e.g., with RabbitMQ or Kafka), and application performance tuning
+        // Filter by age and name
+        List<Person> ageAndNameFilter = filterPersons(persons, filterByAge(25), filterByName("Alice"));
+        System.out.println("Filter by age and name:");
+        ageAndNameFilter.forEach(System.out::println);
 
-These definitions should help in assessing candidates at different levels based on their knowledge and skills in Java programming and related technologies.
+        // Filter by name and city
+        List<Person> nameAndCityFilter = filterPersons(persons, filterByName("David"), filterByCity("New York"));
+        System.out.println("Filter by name and city:");
+        nameAndCityFilter.forEach(System.out::println);
+    }
+}
