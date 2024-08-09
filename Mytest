@@ -1,52 +1,16 @@
-import java.util.List;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
+Existing Infrastructure
+Cost-Efficient: Utilizes already invested resources.
+Faster Setup: Immediate availability.
+Proven Stability: Known stability and performance.
+Scalability Limits: May not scale with future growth.
+Technical Debt: Inherited legacy issues.
+Limited Flexibility: May restrict innovation.
 
-public class PersonFilter {
 
-    public static Predicate<Person> filterByAge(int age) {
-        return p -> p.getAge() > age;
-    }
-
-    public static Predicate<Person> filterByName(String name) {
-        return p -> p.getName().equalsIgnoreCase(name);
-    }
-
-    public static Predicate<Person> filterByCity(String city) {
-        return p -> p.getCity().equalsIgnoreCase(city);
-    }
-
-    public static List<Person> filterPersons(List<Person> persons, Predicate<Person>... filters) {
-        return persons.stream()
-                .filter(combineFilters(filters))
-                .collect(Collectors.toList());
-    }
-
-    @SafeVarargs
-    private static Predicate<Person> combineFilters(Predicate<Person>... filters) {
-        Predicate<Person> combinedFilter = filters[0];
-        for (int i = 1; i < filters.length; i++) {
-            combinedFilter = combinedFilter.and(filters[i]);
-        }
-        return combinedFilter;
-    }
-
-    public static void main(String[] args) {
-        List<Person> persons = List.of(
-                new Person("Alice", 30, "New York"),
-                new Person("Bob", 25, "San Francisco"),
-                new Person("Charlie", 35, "Los Angeles"),
-                new Person("David", 28, "New York")
-        );
-
-        // Filter by age and name
-        List<Person> ageAndNameFilter = filterPersons(persons, filterByAge(25), filterByName("Alice"));
-        System.out.println("Filter by age and name:");
-        ageAndNameFilter.forEach(System.out::println);
-
-        // Filter by name and city
-        List<Person> nameAndCityFilter = filterPersons(persons, filterByName("David"), filterByCity("New York"));
-        System.out.println("Filter by name and city:");
-        nameAndCityFilter.forEach(System.out::println);
-    }
-}
+Creating New Infrastructure
+Customization: Made to fit your exact needs.
+Scalability: Designed to grow with the business.
+Modern Tools: Leverage the latest technology.
+Cost: High initial investment.
+Setup Time: Requires significant time and resources to build.
+Risk: Unproven stability.
