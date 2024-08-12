@@ -11,29 +11,32 @@ def merge_web_xml(v1_file, v2_file, output_file):
     # Create a new root for the output
     output_root = ET.Element(v2_root.tag)
 
-    # Function to find matching elements in a list
-    def find_matching_elements(v1_elements, v2_element):
-        matches = []
+    # Function to find and remove matching element from v1_elements list
+    def find_and_remove_matching_element(v1_elements, v2_elem):
         for v1_elem in v1_elements:
-            if v1_elem.tag == v2_element.tag and v1_elem.attrib == v2_element.attrib:
-                matches.append(v1_elem)
-        return matches
+            if v1_elem.tag == v2_elem.tag and v1_elem.attrib == v2_elem.attrib:
+                v1_elements.remove(v1_elem)  # Remove the matched element to avoid reusing it
+                return v1_elem
+        return None
 
     # Create a list of all elements in V1 for easier matching
     v1_elements = list(v1_root.iter())
 
-    # Iterate over V2 tags to build the structure of the output file
+    # Iterate over V2 elements to build the structure of the output file
     for v2_elem in v2_root:
-        # Find all matching tags in V1
-        matching_v1_elems = find_matching_elements(v1_elements, v2_elem)
+        # Find and remove the corresponding tag in V1
+        matching_v1_elem = find_and_remove_matching_element(v1_elements, v2_elem)
         
-        if matching_v1_elems:
-            # If there are matching tags in V1, use them in the output
-            for match in matching_v1_elems:
-                output_root.append(match)
+        if matching_v1_elem is not None:
+            # If a match is found in V1, use the V1 tag in the output
+            output_root.append(matching_v1_elem)
         else:
-            # If the tag does not exist in V1, keep the V2 tag in the output
+            # If no match is found in V1, keep the V2 tag in the output
             output_root.append(v2_elem)
+
+    # If there are any remaining unmatched elements in V1, add them to the output
+    for remaining_v1_elem in v1_elements:
+        output_root.append(remaining_v1_elem)
 
     # Write the merged output to a new file
     output_tree = ET.ElementTree(output_root)
