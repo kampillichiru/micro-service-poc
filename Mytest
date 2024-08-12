@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 
-def merge_xml(v1_file, v2_file, output_file):
+def merge_web_xml(v1_file, v2_file, output_file):
     # Parse the XML files
     v1_tree = ET.parse(v1_file)
     v2_tree = ET.parse(v2_file)
@@ -8,34 +8,31 @@ def merge_xml(v1_file, v2_file, output_file):
     v1_root = v1_tree.getroot()
     v2_root = v2_tree.getroot()
 
-    # Function to find a tag in a tree by tag and attributes
+    # Function to find a tag in a tree by tag name and attributes
     def find_tag_with_same_attrib(root, elem):
         for e in root.iter(elem.tag):
             if e.attrib == elem.attrib:
                 return e
         return None
 
-    # Iterate over V1 tags
-    for v1_elem in v1_root.iter():
-        # Skip root element
-        if v1_elem is v1_root:
-            continue
+    # Create a new root for the output
+    output_root = ET.Element(v2_root.tag)
 
-        # Find the same tag with matching attributes in V2
-        v2_elem = find_tag_with_same_attrib(v2_root, v1_elem)
+    # Iterate over V2 tags to build the structure of the output file
+    for v2_elem in v2_root:
+        # Find the corresponding tag in V1
+        v1_elem = find_tag_with_same_attrib(v1_root, v2_elem)
         
-        if v2_elem is not None:
-            # If the tag exists in V2, replace its text with V1's text
-            v2_elem.text = v1_elem.text
+        if v1_elem is not None:
+            # If the tag exists in V1, use the V1 tag in the output
+            output_root.append(v1_elem)
         else:
-            # If the tag does not exist in V2, add it
-            parent_path = v1_tree.getpath(v1_elem).rsplit('/', 1)[0]
-            v2_parent = v2_root.find(parent_path.replace(f'.//{v1_root.tag}', f'.//{v2_root.tag}'))
-            if v2_parent is not None:
-                v2_parent.append(v1_elem)
-    
+            # If the tag does not exist in V1, keep the V2 tag in the output
+            output_root.append(v2_elem)
+
     # Write the merged output to a new file
-    v2_tree.write(output_file, encoding="utf-8", xml_declaration=True)
+    output_tree = ET.ElementTree(output_root)
+    output_tree.write(output_file, encoding="utf-8", xml_declaration=True)
 
 # Example usage
-merge_xml('V1.xml', 'V2.xml', 'output.xml')
+merge_web_xml('V1_web.xml', 'V2_web.xml', 'output_web.xml')
