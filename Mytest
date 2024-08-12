@@ -1,16 +1,34 @@
-Existing Infrastructure
-Cost-Efficient: Utilizes already invested resources.
-Faster Setup: Immediate availability.
-Proven Stability: Known stability and performance.
-Scalability Limits: May not scale with future growth.
-Technical Debt: Inherited legacy issues.
-Limited Flexibility: May restrict innovation.
+import xml.etree.ElementTree as ET
 
+def merge_xml(v1_file, v2_file, output_file):
+    # Parse the XML files
+    v1_tree = ET.parse(v1_file)
+    v2_tree = ET.parse(v2_file)
+    
+    v1_root = v1_tree.getroot()
+    v2_root = v2_tree.getroot()
 
-Creating New Infrastructure
-Customization: Made to fit your exact needs.
-Scalability: Designed to grow with the business.
-Modern Tools: Leverage the latest technology.
-Cost: High initial investment.
-Setup Time: Requires significant time and resources to build.
-Risk: Unproven stability.
+    # Function to find a tag in a tree
+    def find_tag(root, tag):
+        return root.find(f'.//{tag}')
+
+    # Iterate over V1 tags
+    for v1_elem in v1_root.iter():
+        v1_tag = v1_elem.tag
+        v1_text = v1_elem.text
+        
+        # Find the same tag in V2
+        v2_elem = find_tag(v2_root, v1_tag)
+        
+        if v2_elem is not None:
+            # If the tag exists in V2, replace its text with V1's text
+            v2_elem.text = v1_text
+        else:
+            # If the tag does not exist in V2, add it
+            v2_root.append(v1_elem)
+
+    # Write the merged output to a new file
+    v2_tree.write(output_file, encoding="utf-8", xml_declaration=True)
+
+# Example usage
+merge_xml('V1.xml', 'V2.xml', 'output.xml')
