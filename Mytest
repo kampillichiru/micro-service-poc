@@ -8,24 +8,29 @@ def merge_web_xml(v1_file, v2_file, output_file):
     v1_root = v1_tree.getroot()
     v2_root = v2_tree.getroot()
 
-    # Function to find a tag in a tree by tag name and attributes
-    def find_tag_with_same_attrib(root, elem):
-        for e in root.iter(elem.tag):
-            if e.attrib == elem.attrib:
-                return e
-        return None
-
     # Create a new root for the output
     output_root = ET.Element(v2_root.tag)
 
+    # Function to find matching elements in a list
+    def find_matching_elements(v1_elements, v2_element):
+        matches = []
+        for v1_elem in v1_elements:
+            if v1_elem.tag == v2_element.tag and v1_elem.attrib == v2_element.attrib:
+                matches.append(v1_elem)
+        return matches
+
+    # Create a list of all elements in V1 for easier matching
+    v1_elements = list(v1_root.iter())
+
     # Iterate over V2 tags to build the structure of the output file
     for v2_elem in v2_root:
-        # Find the corresponding tag in V1
-        v1_elem = find_tag_with_same_attrib(v1_root, v2_elem)
+        # Find all matching tags in V1
+        matching_v1_elems = find_matching_elements(v1_elements, v2_elem)
         
-        if v1_elem is not None:
-            # If the tag exists in V1, use the V1 tag in the output
-            output_root.append(v1_elem)
+        if matching_v1_elems:
+            # If there are matching tags in V1, use them in the output
+            for match in matching_v1_elems:
+                output_root.append(match)
         else:
             # If the tag does not exist in V1, keep the V2 tag in the output
             output_root.append(v2_elem)
