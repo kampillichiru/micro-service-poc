@@ -8,25 +8,32 @@ def merge_xml(v1_file, v2_file, output_file):
     v1_root = v1_tree.getroot()
     v2_root = v2_tree.getroot()
 
-    # Function to find a tag in a tree
-    def find_tag(root, tag):
-        return root.find(f'.//{tag}')
+    # Function to find a tag in a tree by tag and attributes
+    def find_tag_with_same_attrib(root, elem):
+        for e in root.iter(elem.tag):
+            if e.attrib == elem.attrib:
+                return e
+        return None
 
     # Iterate over V1 tags
     for v1_elem in v1_root.iter():
-        v1_tag = v1_elem.tag
-        v1_text = v1_elem.text
-        
-        # Find the same tag in V2
-        v2_elem = find_tag(v2_root, v1_tag)
+        # Skip root element
+        if v1_elem is v1_root:
+            continue
+
+        # Find the same tag with matching attributes in V2
+        v2_elem = find_tag_with_same_attrib(v2_root, v1_elem)
         
         if v2_elem is not None:
             # If the tag exists in V2, replace its text with V1's text
-            v2_elem.text = v1_text
+            v2_elem.text = v1_elem.text
         else:
             # If the tag does not exist in V2, add it
-            v2_root.append(v1_elem)
-
+            parent_path = v1_tree.getpath(v1_elem).rsplit('/', 1)[0]
+            v2_parent = v2_root.find(parent_path.replace(f'.//{v1_root.tag}', f'.//{v2_root.tag}'))
+            if v2_parent is not None:
+                v2_parent.append(v1_elem)
+    
     # Write the merged output to a new file
     v2_tree.write(output_file, encoding="utf-8", xml_declaration=True)
 
