@@ -1,46 +1,33 @@
-import xml.etree.ElementTree as ET
+#!/bin/bash
 
-def merge_web_xml(v1_file, v2_file, output_file):
-    # Parse the XML files
-    v1_tree = ET.parse(v1_file)
-    v2_tree = ET.parse(v2_file)
-    
-    v1_root = v1_tree.getroot()
-    v2_root = v2_tree.getroot()
+# Variables
+JAVA_HOME="/path/to/your/java/home"  # Replace with the path to your Java installation
+JAR_FILE="myapp.jar"                # Replace with the name of your JAR file
+LOG_FILE="application.log"          # Log file name
 
-    # Create a new root for the output
-    output_root = ET.Element(v2_root.tag)
+# Check if the JAVA_HOME directory exists
+if [ ! -d "$JAVA_HOME" ]; then
+    echo "JAVA_HOME directory not found: $JAVA_HOME"
+    exit 1
+fi
 
-    # Function to find and remove matching element from v1_elements list
-    def find_and_remove_matching_element(v1_elements, v2_elem):
-        for v1_elem in v1_elements:
-            if v1_elem.tag == v2_elem.tag and v1_elem.attrib == v2_elem.attrib:
-                v1_elements.remove(v1_elem)  # Remove the matched element to avoid reusing it
-                return v1_elem
-        return None
+# Check if the JAR file exists
+if [ ! -f "$JAR_FILE" ]; then
+    echo "JAR file not found: $JAR_FILE"
+    exit 1
+fi
 
-    # Create a list of all elements in V1 for easier matching
-    v1_elements = list(v1_root.iter())
+# Start the Spring Boot application
+echo "Starting Spring Boot application with JAVA_HOME: $JAVA_HOME"
+nohup "$JAVA_HOME/bin/java" -jar "$JAR_FILE" > "$LOG_FILE" 2>&1 &
 
-    # Iterate over V2 elements to build the structure of the output file
-    for v2_elem in v2_root:
-        # Find and remove the corresponding tag in V1
-        matching_v1_elem = find_and_remove_matching_element(v1_elements, v2_elem)
-        
-        if matching_v1_elem is not None:
-            # If a match is found in V1, use the V1 tag in the output
-            output_root.append(matching_v1_elem)
-        else:
-            # If no match is found in V1, keep the V2 tag in the output
-            output_root.append(v2_elem)
+# Get the process ID of the application
+APP_PID=$!
+echo "Spring Boot application started with PID: $APP_PID"
 
-    # If there are any remaining unmatched elements in V1, add them to the output
-    for remaining_v1_elem in v1_elements:
-        output_root.append(remaining_v1_elem)
+# Optional: Save the PID to a file for later use (e.g., for stopping the application)
+echo $APP_PID > app.pid
 
-    # Write the merged output to a new file
-    output_tree = ET.ElementTree(output_root)
-    output_tree.write(output_file, encoding="utf-8", xml_declaration=True)
-
-# Example usage
-merge_web_xml('V1_web.xml', 'V2_web.xml', 'output_web.xml')
+# Background info message
+echo "The application is running in the background."
+echo "You can check the logs in: $LOG_FILE"
