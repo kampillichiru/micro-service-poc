@@ -3,72 +3,104 @@ import javax.xml.parsers.SAXParserFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.helpers.DefaultHandler;
+
 import java.io.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class XmlFormatterSAX {
 
+    private static final Logger LOGGER = Logger.getLogger(XmlFormatterSAX.class.getName());
+    private static final int INDENTATION_SIZE = 2; // Number of spaces for indentation
+
     public static void main(String[] args) {
+        String inputFilePath = "path/to/your/input.xml";
+        String outputFilePath = "path/to/your/output.xml";
+
         try {
-            // Step 1: Create a SAXParserFactory and SAXParser
-            SAXParserFactory factory = SAXParserFactory.newInstance();
-            SAXParser saxParser = factory.newSAXParser();
+            formatXml(inputFilePath, outputFilePath);
+            LOGGER.info("XML formatted and saved successfully!");
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error formatting XML file", e);
+        }
+    }
 
-            // Step 2: Set up the input and output streams
-            try (BufferedReader reader = new BufferedReader(new FileReader("path/to/your/input.xml"));
-                 PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter("path/to/your/output.xml")))) {
+    /**
+     * Formats the XML file located at inputFilePath and writes the formatted XML to outputFilePath.
+     *
+     * @param inputFilePath  The path to the input XML file.
+     * @param outputFilePath The path to the output formatted XML file.
+     * @throws Exception If an error occurs during parsing or writing.
+     */
+    private static void formatXml(String inputFilePath, String outputFilePath) throws Exception {
+        SAXParserFactory factory = SAXParserFactory.newInstance();
+        SAXParser saxParser = factory.newSAXParser();
 
-                // Step 3: Define the handler for parsing events
-                DefaultHandler handler = new DefaultHandler() {
-                    private int indentLevel = 0;
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFilePath));
+             PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(outputFilePath)))) {
 
-                    @Override
-                    public void startElement(String uri, String localName, String qName, Attributes attributes) {
-                        printIndent(writer);
-                        writer.print("<" + qName);
+            SAXHandler handler = new SAXHandler(writer);
+            saxParser.parse(new InputSource(reader), handler);
 
-                        // Print attributes
-                        if (attributes != null) {
-                            for (int i = 0; i < attributes.getLength(); i++) {
-                                writer.print(" " + attributes.getQName(i) + "=\"" + attributes.getValue(i) + "\"");
-                            }
-                        }
+        } catch (FileNotFoundException e) {
+            LOGGER.log(Level.SEVERE, "File not found: " + inputFilePath, e);
+            throw e;
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "I/O error while processing the file", e);
+            throw e;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error during XML parsing", e);
+            throw e;
+        }
+    }
 
-                        writer.println(">");
-                        indentLevel++;
-                    }
+    /**
+     * SAX handler for processing XML elements and writing formatted XML.
+     */
+    private static class SAXHandler extends DefaultHandler {
+        private final PrintWriter writer;
+        private int indentLevel = 0;
 
-                    @Override
-                    public void characters(char[] ch, int start, int length) {
-                        String content = new String(ch, start, length).trim();
-                        if (!content.isEmpty()) {
-                            printIndent(writer);
-                            writer.println(content);
-                        }
-                    }
+        public SAXHandler(PrintWriter writer) {
+            this.writer = writer;
+        }
 
-                    @Override
-                    public void endElement(String uri, String localName, String qName) {
-                        indentLevel--;
-                        printIndent(writer);
-                        writer.println("</" + qName + ">");
-                    }
+        @Override
+        public void startElement(String uri, String localName, String qName, Attributes attributes) {
+            printIndent();
+            writer.print("<" + qName);
 
-                    private void printIndent(PrintWriter writer) {
-                        for (int i = 0; i < indentLevel; i++) {
-                            writer.print("  "); // Two spaces for each indent level
-                        }
-                    }
-                };
-
-                // Step 4: Parse the XML file and write formatted XML to the output file
-                saxParser.parse(new InputSource(reader), handler);
-
-                System.out.println("XML formatted and saved successfully!");
-
+            if (attributes != null) {
+                for (int i = 0; i < attributes.getLength(); i++) {
+                    writer.print(" " + attributes.getQName(i) + "=\"" + attributes.getValue(i) + "\"");
+                }
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            writer.println(">");
+            indentLevel++;
+        }
+
+        @Override
+        public void characters(char[] ch, int start, int length) {
+            String content = new String(ch, start, length).trim();
+            if (!content.isEmpty()) {
+                printIndent();
+                writer.println(content);
+            }
+        }
+
+        @Override
+        public void endElement(String uri, String localName, String qName) {
+            indentLevel--;
+            printIndent();
+            writer.println("</" + qName + ">");
+        }
+
+        private void printIndent() {
+            writer.print(" ".repeat(Math.max(0, indentLevel * INDENTATION_SIZE)));
         }
     }
 }
+
+
+
