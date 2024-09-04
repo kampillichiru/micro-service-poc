@@ -1,33 +1,74 @@
-#!/bin/bash
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
+import org.xml.sax.helpers.DefaultHandler;
+import java.io.*;
 
-# Variables
-JAVA_HOME="/path/to/your/java/home"  # Replace with the path to your Java installation
-JAR_FILE="myapp.jar"                # Replace with the name of your JAR file
-LOG_FILE="application.log"          # Log file name
+public class XmlFormatterSAX {
 
-# Check if the JAVA_HOME directory exists
-if [ ! -d "$JAVA_HOME" ]; then
-    echo "JAVA_HOME directory not found: $JAVA_HOME"
-    exit 1
-fi
+    public static void main(String[] args) {
+        try {
+            // Step 1: Create a SAXParserFactory and SAXParser
+            SAXParserFactory factory = SAXParserFactory.newInstance();
+            SAXParser saxParser = factory.newSAXParser();
 
-# Check if the JAR file exists
-if [ ! -f "$JAR_FILE" ]; then
-    echo "JAR file not found: $JAR_FILE"
-    exit 1
-fi
+            // Step 2: Set up the input and output streams
+            try (BufferedReader reader = new BufferedReader(new FileReader("path/to/your/input.xml"));
+                 PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter("path/to/your/output.xml")))) {
 
-# Start the Spring Boot application
-echo "Starting Spring Boot application with JAVA_HOME: $JAVA_HOME"
-nohup "$JAVA_HOME/bin/java" -jar "$JAR_FILE" > "$LOG_FILE" 2>&1 &
+                // Step 3: Define the handler for parsing events
+                DefaultHandler handler = new DefaultHandler() {
+                    private int indentLevel = 0;
 
-# Get the process ID of the application
-APP_PID=$!
-echo "Spring Boot application started with PID: $APP_PID"
+                    @Override
+                    public void startElement(String uri, String localName, String qName, Attributes attributes) {
+                        printIndent(writer);
+                        writer.print("<" + qName);
 
-# Optional: Save the PID to a file for later use (e.g., for stopping the application)
-echo $APP_PID > app.pid
+                        // Print attributes
+                        if (attributes != null) {
+                            for (int i = 0; i < attributes.getLength(); i++) {
+                                writer.print(" " + attributes.getQName(i) + "=\"" + attributes.getValue(i) + "\"");
+                            }
+                        }
 
-# Background info message
-echo "The application is running in the background."
-echo "You can check the logs in: $LOG_FILE"
+                        writer.println(">");
+                        indentLevel++;
+                    }
+
+                    @Override
+                    public void characters(char[] ch, int start, int length) {
+                        String content = new String(ch, start, length).trim();
+                        if (!content.isEmpty()) {
+                            printIndent(writer);
+                            writer.println(content);
+                        }
+                    }
+
+                    @Override
+                    public void endElement(String uri, String localName, String qName) {
+                        indentLevel--;
+                        printIndent(writer);
+                        writer.println("</" + qName + ">");
+                    }
+
+                    private void printIndent(PrintWriter writer) {
+                        for (int i = 0; i < indentLevel; i++) {
+                            writer.print("  "); // Two spaces for each indent level
+                        }
+                    }
+                };
+
+                // Step 4: Parse the XML file and write formatted XML to the output file
+                saxParser.parse(new InputSource(reader), handler);
+
+                System.out.println("XML formatted and saved successfully!");
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
