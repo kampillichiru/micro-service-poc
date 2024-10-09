@@ -1,106 +1,119 @@
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-import org.xml.sax.Attributes;
-import org.xml.sax.InputSource;
-import org.xml.sax.helpers.DefaultHandler;
 
-import java.io.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+ci-cd.yml
 
-public class XmlFormatterSAX {
+name: CI-CD Pipeline for My Microservice
 
-    private static final Logger LOGGER = Logger.getLogger(XmlFormatterSAX.class.getName());
-    private static final int INDENTATION_SIZE = 2; // Number of spaces for indentation
+on:
+  push:
+    branches:
+      - master
 
-    public static void main(String[] args) {
-        String inputFilePath = "path/to/your/input.xml";
-        String outputFilePath = "path/to/your/output.xml";
+jobs:
+  ci-build:
+    name: CI Build
+    uses: your-org/ci-templates/.github/workflows/ci.yml@main
+    with:
+      service_name: my-microservice
+      docker_registry: harbor.io/my-project
 
-        try {
-            formatXml(inputFilePath, outputFilePath);
-            LOGGER.info("XML formatted and saved successfully!");
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error formatting XML file", e);
-        }
-    }
-
-    /**
-     * Formats the XML file located at inputFilePath and writes the formatted XML to outputFilePath.
-     *
-     * @param inputFilePath  The path to the input XML file.
-     * @param outputFilePath The path to the output formatted XML file.
-     * @throws Exception If an error occurs during parsing or writing.
-     */
-    private static void formatXml(String inputFilePath, String outputFilePath) throws Exception {
-        SAXParserFactory factory = SAXParserFactory.newInstance();
-        SAXParser saxParser = factory.newSAXParser();
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(inputFilePath));
-             PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(outputFilePath)))) {
-
-            SAXHandler handler = new SAXHandler(writer);
-            saxParser.parse(new InputSource(reader), handler);
-
-        } catch (FileNotFoundException e) {
-            LOGGER.log(Level.SEVERE, "File not found: " + inputFilePath, e);
-            throw e;
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "I/O error while processing the file", e);
-            throw e;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error during XML parsing", e);
-            throw e;
-        }
-    }
-
-    /**
-     * SAX handler for processing XML elements and writing formatted XML.
-     */
-    private static class SAXHandler extends DefaultHandler {
-        private final PrintWriter writer;
-        private int indentLevel = 0;
-
-        public SAXHandler(PrintWriter writer) {
-            this.writer = writer;
-        }
-
-        @Override
-        public void startElement(String uri, String localName, String qName, Attributes attributes) {
-            printIndent();
-            writer.print("<" + qName);
-
-            if (attributes != null) {
-                for (int i = 0; i < attributes.getLength(); i++) {
-                    writer.print(" " + attributes.getQName(i) + "=\"" + attributes.getValue(i) + "\"");
-                }
-            }
-
-            writer.println(">");
-            indentLevel++;
-        }
-
-        @Override
-        public void characters(char[] ch, int start, int length) {
-            String content = new String(ch, start, length).trim();
-            if (!content.isEmpty()) {
-                printIndent();
-                writer.println(content);
-            }
-        }
-
-        @Override
-        public void endElement(String uri, String localName, String qName) {
-            indentLevel--;
-            printIndent();
-            writer.println("</" + qName + ">");
-        }
-
-        private void printIndent() {
-            writer.print(" ".repeat(Math.max(0, indentLevel * INDENTATION_SIZE)));
-        }
-    }
-}
+  cd-deploy:
+    name: CD Deploy
+    needs: ci-build
+    uses: your-org/cd-templates/.github/workflows/cd.yml@main
+    with:
+      helm_chart_name: my-microservice-chart
+      kubernetes_cluster: my-k8s-cluster
+      docker_image: harbor.io/my-project/my-microservice:${{ github.sha }}
 
 
 
+ci.yml
+
+name: CI Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string
+      docker_registry:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the service repo (generic)
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Step 2: Maven setup (generic)
+      - name: Maven setup
+        run: mvn install
+
+      # Step 3: Maven build (generic)
+      - name: Maven build
+        run: mvn clean package
+
+      # Step 4: Docker build (generic)
+      - name: Docker build
+        run: docker build -t ${{ inputs.docker_registry }}/${{ inputs.service_name }}:${{ github.sha }} .
+
+      # Step 5: Push to Docker registry (generic)
+      - name: Push to Docker registry
+        run: docker push ${{ inputs.docker_registry }}/${{ inputs.service_name }}:${{ github.sha }}
+
+
+cd.yml
+
+name: CD Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      helm_chart_name:
+        required: true
+        type: string
+      kubernetes_cluster:
+        required: true
+        type: string
+      docker_image:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout Helm chart repo (generic)
+      - name: Checkout Helm repo
+        uses: actions/checkout@v2
+
+      # Step 2: Setup kubectl (generic)
+      - name: Setup kubectl
+        run: |
+          curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+          chmod +x ./kubectl
+          sudo mv ./kubectl /usr/local/bin/kubectl
+
+      # Step 3: Setup kubeconfig (generic)
+      - name: Setup kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+          kubectl config set-cluster ${{ inputs.kubernetes_cluster }} --server=$KUBERNETES_SERVER --insecure-skip-tls-verify=true
+          kubectl config set-credentials my-credentials --token=$KUBERNETES_TOKEN
+          kubectl config set-context my-context --cluster=${{ inputs.kubernetes_cluster }} --user=my-credentials
+          kubectl config use-context my-context
+
+      # Step 4: Helm setup (generic)
+      - name: Helm setup
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      # Step 5: Helm upgrade/install (generic)
+      - name: Helm upgrade
+        run: helm upgrade --install ${{ inputs.helm_chart_name }} ./charts/${{ inputs.helm_chart_name }} --set image.repository=${{ inputs.docker_image }}
