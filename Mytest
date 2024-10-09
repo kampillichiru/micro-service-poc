@@ -1,119 +1,21 @@
-
-ci-cd.yml
-
-name: CI-CD Pipeline for My Microservice
-
-on:
-  push:
-    branches:
-      - master
-
-jobs:
-  ci-build:
-    name: CI Build
-    uses: your-org/ci-templates/.github/workflows/ci.yml@main
-    with:
-      service_name: my-microservice
-      docker_registry: harbor.io/my-project
-
-  cd-deploy:
-    name: CD Deploy
-    needs: ci-build
-    uses: your-org/cd-templates/.github/workflows/cd.yml@main
-    with:
-      helm_chart_name: my-microservice-chart
-      kubernetes_cluster: my-k8s-cluster
-      docker_image: harbor.io/my-project/my-microservice:${{ github.sha }}
-
-
-
-ci.yml
-
-name: CI Pipeline
-
-on:
-  workflow_call:
-    inputs:
-      service_name:
-        required: true
-        type: string
-      docker_registry:
-        required: true
-        type: string
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      # Step 1: Checkout the service repo (generic)
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      # Step 2: Maven setup (generic)
-      - name: Maven setup
-        run: mvn install
-
-      # Step 3: Maven build (generic)
-      - name: Maven build
-        run: mvn clean package
-
-      # Step 4: Docker build (generic)
-      - name: Docker build
-        run: docker build -t ${{ inputs.docker_registry }}/${{ inputs.service_name }}:${{ github.sha }} .
-
-      # Step 5: Push to Docker registry (generic)
-      - name: Push to Docker registry
-        run: docker push ${{ inputs.docker_registry }}/${{ inputs.service_name }}:${{ github.sha }}
-
-
-cd.yml
-
-name: CD Pipeline
-
-on:
-  workflow_call:
-    inputs:
-      helm_chart_name:
-        required: true
-        type: string
-      kubernetes_cluster:
-        required: true
-        type: string
-      docker_image:
-        required: true
-        type: string
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout Helm chart repo (generic)
-      - name: Checkout Helm repo
-        uses: actions/checkout@v2
-
-      # Step 2: Setup kubectl (generic)
-      - name: Setup kubectl
+      - name: Set environment-specific variables
         run: |
-          curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
-          chmod +x ./kubectl
-          sudo mv ./kubectl /usr/local/bin/kubectl
+          # Dynamically construct environment-specific variable names
+          KUBE_URL_VAR="KUBE_${{ env.ENVIRONMENT }}_URL"
+          KUBE_USER_VAR="KUBE_${{ env.ENVIRONMENT }}_USER"
+          KUBE_PASSWORD_VAR="KUBE_${{ env.ENVIRONMENT }}_PASSWORD"
 
-      # Step 3: Setup kubeconfig (generic)
-      - name: Setup kubeconfig
+          # Export the actual values of the environment-specific variables
+          echo "KUBE_URL=${{ vars[$KUBE_URL_VAR] }}" >> $GITHUB_ENV
+          echo "KUBE_USER=${{ vars[$KUBE_USER_VAR] }}" >> $GITHUB_ENV
+          echo "KUBE_PASSWORD=${{ secrets[$KUBE_PASSWORD_VAR] }}" >> $GITHUB_ENV
+
+      - name: Use dynamic environment variables
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
-          kubectl config set-cluster ${{ inputs.kubernetes_cluster }} --server=$KUBERNETES_SERVER --insecure-skip-tls-verify=true
-          kubectl config set-credentials my-credentials --token=$KUBERNETES_TOKEN
-          kubectl config set-context my-context --cluster=${{ inputs.kubernetes_cluster }} --user=my-credentials
-          kubectl config use-context my-context
-
-      # Step 4: Helm setup (generic)
-      - name: Helm setup
-        run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-      # Step 5: Helm upgrade/install (generic)
-      - name: Helm upgrade
-        run: helm upgrade --install ${{ inputs.helm_chart_name }} ./charts/${{ inputs.helm_chart_name }} --set image.repository=${{ inputs.docker_image }}
+          echo "Cluster URL: $KUBE_URL"
+          echo "Service Account Name: $KUBE_USER"
+          echo "Service Account Password: $KUBE_PASSWORD"
