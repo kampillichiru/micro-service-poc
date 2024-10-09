@@ -1,1 +1,48 @@
-          ENVIRONMENT_UPPER=$(echo "${{ env.ENVIRONMENT }}" | tr '[:lower:]' '[:upper:]')
+name: Deploy to Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select the environment'
+        required: true
+        default: 'DEV'
+        type: choice
+        options:
+          - DEV
+          - UAT
+          - PRD
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Environment Variables
+        id: set-env
+        run: |
+          # Convert the input to uppercase
+          ENVIRONMENT_UPPER="${{ github.event.inputs.environment }}"
+          
+          if [ "$ENVIRONMENT_UPPER" == "DEV" ]; then
+            echo "KUBE_URL=${{ secrets.KUBE_DEV_URL }}" >> $GITHUB_ENV
+            echo "KUBE_USER=${{ secrets.KUBE_DEV_USER }}" >> $GITHUB_ENV
+            echo "KUBE_PASSWORD=${{ secrets.KUBE_DEV_PASSWORD }}" >> $GITHUB_ENV
+          elif [ "$ENVIRONMENT_UPPER" == "UAT" ]; then
+            echo "KUBE_URL=${{ secrets.KUBE_UAT_URL }}" >> $GITHUB_ENV
+            echo "KUBE_USER=${{ secrets.KUBE_UAT_USER }}" >> $GITHUB_ENV
+            echo "KUBE_PASSWORD=${{ secrets.KUBE_UAT_PASSWORD }}" >> $GITHUB_ENV
+          elif [ "$ENVIRONMENT_UPPER" == "PRD" ]; then
+            echo "KUBE_URL=${{ secrets.KUBE_PRD_URL }}" >> $GITHUB_ENV
+            echo "KUBE_USER=${{ secrets.KUBE_PRD_USER }}" >> $GITHUB_ENV
+            echo "KUBE_PASSWORD=${{ secrets.KUBE_PRD_PASSWORD }}" >> $GITHUB_ENV
+          else
+            echo "Invalid ENVIRONMENT value."
+            exit 1
+          fi
+
+      - name: Deploy to Kubernetes
+        run: |
+          echo "Deploying to environment: $ENVIRONMENT_UPPER"
+          echo "Using KUBE_URL: $KUBE_URL"
+          # Your deployment commands go here, e.g.:
+          # kubectl apply -f deployment.yaml --kubeconfig $KUBE_URL
