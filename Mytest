@@ -9,10 +9,20 @@ jobs:
           KUBE_USER_VAR="KUBE_${{ env.ENVIRONMENT }}_USER"
           KUBE_PASSWORD_VAR="KUBE_${{ env.ENVIRONMENT }}_PASSWORD"
 
-          # Export the actual values of the environment-specific variables
-          echo "KUBE_URL=${{ vars[$KUBE_URL_VAR] }}" >> $GITHUB_ENV
-          echo "KUBE_USER=${{ vars[$KUBE_USER_VAR] }}" >> $GITHUB_ENV
-          echo "KUBE_PASSWORD=${{ secrets[$KUBE_PASSWORD_VAR] }}" >> $GITHUB_ENV
+          # Print for debugging purposes (optional)
+          echo "Constructed KUBE_URL_VAR=$KUBE_URL_VAR"
+          echo "Constructed KUBE_USER_VAR=$KUBE_USER_VAR"
+          echo "Constructed KUBE_PASSWORD_VAR=$KUBE_PASSWORD_VAR"
+
+          # Use indirect parameter expansion in bash to get the actual values
+          KUBE_URL=${!KUBE_URL_VAR}
+          KUBE_USER=${!KUBE_USER_VAR}
+          KUBE_PASSWORD=${!KUBE_PASSWORD_VAR}
+
+          # Export these to make them available to subsequent steps
+          echo "KUBE_URL=$KUBE_URL" >> $GITHUB_ENV
+          echo "KUBE_USER=$KUBE_USER" >> $GITHUB_ENV
+          echo "KUBE_PASSWORD=$KUBE_PASSWORD" >> $GITHUB_ENV
 
       - name: Use dynamic environment variables
         run: |
