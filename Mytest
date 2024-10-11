@@ -1,99 +1,64 @@
-       transformer.setOutputProperty("omit-xml-declaration", "yes");
-        transformer.setOutputProperty("lineSeparator", "\n"); // Use line breaks
-
-
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
 
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Properties;
 
-public class MainframeXMLTransfer {
+public class SftpUploadAscii {
 
-    // Method to format and prettify the XML with UTF-8 encoding
-    public static void formatXml(String inputFilePath, String outputFilePath) throws Exception {
-        // Set up the transformer for pretty-printing the XML
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+    public static void main(String[] args) {
+        // Replace these with your actual SFTP details and file path
+        String sftpHost = "your.mainframe.host.com"; // Mainframe host
+        String sftpUsername = "your-username"; // SFTP username
+        String sftpPassword = "your-password"; // SFTP password
+        String localFilePath = "path/to/your/local/formatted_file.txt"; // Local file to upload
+        String remoteFilePath = "/path/on/mainframe/file.txt"; // Remote path on mainframe
 
-        // Perform XML formatting
-        StreamSource source = new StreamSource(new File(inputFilePath));
-        StreamResult result = new StreamResult(new File(outputFilePath));
-        transformer.transform(source, result);
-
-        // Ensure correct CRLF line endings for the mainframe system
-        String formattedXml = new String(Files.readAllBytes(Paths.get(outputFilePath)), StandardCharsets.UTF_8);
-        String formattedXmlWithCorrectLineEndings = formattedXml.replace("\n", "\r\n");
-
-        // Write the formatted XML back to the file using UTF-8 encoding
-        Files.write(Paths.get(outputFilePath), formattedXmlWithCorrectLineEndings.getBytes(StandardCharsets.UTF_8));
-        System.out.println("XML file formatted with UTF-8 and CRLF line endings.");
+        try {
+            uploadFileAsAscii(sftpHost, sftpUsername, sftpPassword, localFilePath, remoteFilePath);
+            System.out.println("File uploaded successfully in ASCII mode.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    // Method to upload the file via SFTP to the mainframe (line by line)
-    public static void uploadToMainframe(String host, String username, String password, String localFilePath, String remoteFilePath) throws Exception {
+    public static void uploadFileAsAscii(String host, String username, String password, String localFilePath, String remoteFilePath) throws Exception {
+        // Create a new session
         JSch jsch = new JSch();
         Session session = jsch.getSession(username, host, 22);
         session.setPassword(password);
 
-        // Configure session with no host key checking
+        // Configure the session for no host key checking
         Properties config = new Properties();
         config.put("StrictHostKeyChecking", "no");
         session.setConfig(config);
-
-        // Connect to the SFTP session
         session.connect();
 
         // Open the SFTP channel
         ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
         channelSftp.connect();
 
-        // Manually handle line endings and upload line by line to avoid issues
-        BufferedReader reader = new BufferedReader(new FileReader(localFilePath));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            String formattedLine = line + "\r\n";  // Add CRLF line endings explicitly
-            channelSftp.put(new ByteArrayInputStream(formattedLine.getBytes(StandardCharsets.UTF_8)), remoteFilePath, ChannelSftp.APPEND);
-        }
-        reader.close();
+        // Read the local file and upload it in ASCII mode
+        try (BufferedReader reader = new BufferedReader(new FileReader(localFilePath))) {
+            String line;
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-        // Disconnect the channel and session
+            // Read the file line by line and convert to ASCII format with CRLF line endings
+            while ((line = reader.readLine()) != null) {
+                // Append CRLF for Windows compatibility
+                byteArrayOutputStream.write((line + "\r\n").getBytes(StandardCharsets.US_ASCII));
+            }
+
+            // Upload the file using ASCII transfer mode
+            try (InputStream inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray())) {
+                channelSftp.put(inputStream, remoteFilePath, ChannelSftp.OVERWRITE); // Use OVERWRITE mode
+            }
+        }
+
+        // Close the SFTP channel and session
         channelSftp.disconnect();
         session.disconnect();
-        System.out.println("File uploaded successfully to mainframe via SFTP (line by line).");
-    }
-
-    public static void main(String[] args) {
-        try {
-            // File paths for input XML and output formatted XML
-            String inputFilePath = "input.xml";
-            String outputFilePath = "formatted_output.xml";
-
-            // Format the XML file
-            formatXml(inputFilePath, outputFilePath);
-
-            // Mainframe SFTP details
-            String sftpHost = "mainframe.host.com";
-            String sftpUsername = "your-username";
-            String sftpPassword = "your-password";
-            String remoteFilePath = "/path/on/mainframe/formatted_output.xml";
-
-            // Upload the formatted file to the mainframe
-            uploadToMainframe(sftpHost, sftpUsername, sftpPassword, outputFilePath, remoteFilePath);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }
