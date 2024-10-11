@@ -7,24 +7,10 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
-import java.util.Vector;
 
 public class MainframeFileTransfer {
 
-    // Method to list directories on the remote system
-    public static void listRemoteDirectories(ChannelSftp channelSftp) throws Exception {
-        try {
-            Vector<ChannelSftp.LsEntry> entries = channelSftp.ls(".");
-            System.out.println("Remote directories and files:");
-            for (ChannelSftp.LsEntry entry : entries) {
-                System.out.println(entry.getFilename());
-            }
-        } catch (Exception e) {
-            System.err.println("Error listing remote directories: " + e.getMessage());
-        }
-    }
-
-    // Method to convert file content to IBM1047 encoding and upload via SFTP
+    // Method to upload file to the mainframe using IBM1047 encoding
     public static void uploadToMainframe(String host, String username, String password, String localFilePath) throws Exception {
         JSch jsch = new JSch();
         Session session = jsch.getSession(username, host, 22);
@@ -40,23 +26,24 @@ public class MainframeFileTransfer {
         ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
         channelSftp.connect();
 
-        // List remote directories to help determine where to upload
-        listRemoteDirectories(channelSftp);
+        // Read the local file
+        File file = new File(localFilePath);
+        Charset localCharset = Charset.forName("UTF-8"); // Adjust if your input file has a specific encoding
+        byte[] fileBytes = Files.readAllBytes(file.toPath());
+        String fileContent = new String(fileBytes, localCharset);
 
-        // Load the local file into memory
-        byte[] fileBytes = Files.readAllBytes(Paths.get(localFilePath));
-        
-        // Convert the file content to IBM1047 encoding
+        // Replace line endings with CRLF
+        fileContent = fileContent.replace("\n", "\r\n");
+
+        // Convert to IBM1047 encoding
         Charset ibm1047Charset = Charset.forName("IBM1047");
-        String fileContent = new String(fileBytes, Charset.defaultCharset()); // Assuming the file is in default system charset
         byte[] ibm1047Bytes = fileContent.getBytes(ibm1047Charset);
 
-        // Use ByteArrayInputStream to feed the IBM1047 encoded bytes to ChannelSftp.put(...)
-        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(ibm1047Bytes);
-        
-        // Use a default remote path or prompt user for input
-        String remoteFilePath = "/default/path/on/mainframe/file.txt"; // Change this to your default path
-        channelSftp.put(byteInputStream, remoteFilePath, ChannelSftp.OVERWRITE);
+        // Use ByteArrayInputStream to upload the file
+        try (ByteArrayInputStream byteInputStream = new ByteArrayInputStream(ibm1047Bytes)) {
+            String remoteFilePath = "/default/path/on/mainframe/file.txt"; // Change to your path
+            channelSftp.put(byteInputStream, remoteFilePath, ChannelSftp.OVERWRITE);
+        }
 
         // Close connections
         channelSftp.disconnect();
