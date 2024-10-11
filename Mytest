@@ -2,91 +2,79 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
 
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.Vector;
 
-public class MainframeXMLTransfer {
+public class MainframeFileTransfer {
 
-    // Method to format and prettify the XML with UTF-8 encoding
-    public static void formatXml(String inputFilePath, String outputFilePath) throws Exception {
-        // Set up the transformer for pretty-printing the XML
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-
-        // Perform XML formatting
-        StreamSource source = new StreamSource(new File(inputFilePath));
-        StreamResult result = new StreamResult(new File(outputFilePath));
-        transformer.transform(source, result);
-
-        // Ensure correct CRLF line endings for the mainframe system
-        String formattedXml = new String(Files.readAllBytes(Paths.get(outputFilePath)), StandardCharsets.UTF_8);
-        String formattedXmlWithCorrectLineEndings = formattedXml.replace("\n", "\r\n");
-
-        // Write the formatted XML back to the file using UTF-8 encoding
-        Files.write(Paths.get(outputFilePath), formattedXmlWithCorrectLineEndings.getBytes(StandardCharsets.UTF_8));
-        System.out.println("XML file formatted with UTF-8 and CRLF line endings.");
+    // Method to list directories on the remote system
+    public static void listRemoteDirectories(ChannelSftp channelSftp) throws Exception {
+        try {
+            Vector<ChannelSftp.LsEntry> entries = channelSftp.ls(".");
+            System.out.println("Remote directories and files:");
+            for (ChannelSftp.LsEntry entry : entries) {
+                System.out.println(entry.getFilename());
+            }
+        } catch (Exception e) {
+            System.err.println("Error listing remote directories: " + e.getMessage());
+        }
     }
 
-    // Method to upload the file via SFTP to the mainframe (line by line)
-    public static void uploadToMainframe(String host, String username, String password, String localFilePath, String remoteFilePath) throws Exception {
+    // Method to convert file content to IBM1047 encoding and upload via SFTP
+    public static void uploadToMainframe(String host, String username, String password, String localFilePath) throws Exception {
         JSch jsch = new JSch();
         Session session = jsch.getSession(username, host, 22);
         session.setPassword(password);
 
-        // Configure session with no host key checking
+        // Configure the session for no host key checking
         Properties config = new Properties();
         config.put("StrictHostKeyChecking", "no");
         session.setConfig(config);
 
-        // Connect to the SFTP session
         session.connect();
 
-        // Open the SFTP channel
         ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
         channelSftp.connect();
 
-        // Manually handle line endings and upload line by line to avoid issues
-        BufferedReader reader = new BufferedReader(new FileReader(localFilePath));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            String formattedLine = line + "\r\n";  // Add CRLF line endings explicitly
-            channelSftp.put(new ByteArrayInputStream(formattedLine.getBytes(StandardCharsets.UTF_8)), remoteFilePath, ChannelSftp.APPEND);
-        }
-        reader.close();
+        // List remote directories to help determine where to upload
+        listRemoteDirectories(channelSftp);
 
-        // Disconnect the channel and session
+        // Load the local file into memory
+        byte[] fileBytes = Files.readAllBytes(Paths.get(localFilePath));
+        
+        // Convert the file content to IBM1047 encoding
+        Charset ibm1047Charset = Charset.forName("IBM1047");
+        String fileContent = new String(fileBytes, Charset.defaultCharset()); // Assuming the file is in default system charset
+        byte[] ibm1047Bytes = fileContent.getBytes(ibm1047Charset);
+
+        // Use ByteArrayInputStream to feed the IBM1047 encoded bytes to ChannelSftp.put(...)
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(ibm1047Bytes);
+        
+        // Use a default remote path or prompt user for input
+        String remoteFilePath = "/default/path/on/mainframe/file.txt"; // Change this to your default path
+        channelSftp.put(byteInputStream, remoteFilePath, ChannelSftp.OVERWRITE);
+
+        // Close connections
         channelSftp.disconnect();
         session.disconnect();
-        System.out.println("File uploaded successfully to mainframe via SFTP (line by line).");
+
+        System.out.println("File uploaded successfully to the mainframe in IBM1047 encoding.");
     }
 
     public static void main(String[] args) {
         try {
-            // File paths for input XML and output formatted XML
-            String inputFilePath = "input.xml";
-            String outputFilePath = "formatted_output.xml";
-
-            // Format the XML file
-            formatXml(inputFilePath, outputFilePath);
-
             // Mainframe SFTP details
             String sftpHost = "mainframe.host.com";
             String sftpUsername = "your-username";
             String sftpPassword = "your-password";
-            String remoteFilePath = "/path/on/mainframe/formatted_output.xml";
+            String localFilePath = "path/to/local/file.txt";  // Your local file path
 
-            // Upload the formatted file to the mainframe
-            uploadToMainframe(sftpHost, sftpUsername, sftpPassword, outputFilePath, remoteFilePath);
+            // Upload file to mainframe
+            uploadToMainframe(sftpHost, sftpUsername, sftpPassword, localFilePath);
 
         } catch (Exception e) {
             e.printStackTrace();
