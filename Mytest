@@ -42,17 +42,19 @@ public class SftpUploadAscii {
 
         // Read the local file and upload it in ASCII mode
         try (BufferedReader reader = new BufferedReader(new FileReader(localFilePath))) {
+            StringBuilder sb = new StringBuilder();
             String line;
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
             // Read the file line by line and convert to ASCII format with CRLF line endings
             while ((line = reader.readLine()) != null) {
-                // Append CRLF for Windows compatibility
-                byteArrayOutputStream.write((line + "\r\n").getBytes(StandardCharsets.US_ASCII));
+                sb.append(line).append("\r\n"); // Append CRLF for Windows compatibility
             }
 
+            // Convert the StringBuilder content to a byte array in ASCII
+            byte[] asciiBytes = sb.toString().getBytes(StandardCharsets.US_ASCII);
+
             // Upload the file using ASCII transfer mode
-            try (InputStream inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray())) {
+            try (InputStream inputStream = new ByteArrayInputStream(asciiBytes)) {
                 channelSftp.put(inputStream, remoteFilePath, ChannelSftp.OVERWRITE); // Use OVERWRITE mode
             }
         }
