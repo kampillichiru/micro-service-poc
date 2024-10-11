@@ -1,25 +1,73 @@
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+
+import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Properties;
 
-public class ByteArrayToBufferedReader {
+public class SftpUploadFromByteArray {
 
-    public static void main(String[] args) {
-        // Sample byte array (for demonstration)
-        String sampleText = "Line 1\nLine 2\nLine 3";
-        byte[] byteArray = sampleText.getBytes(StandardCharsets.UTF_8); // Convert string to byte array
+    // Method to upload a byte array in ASCII format
+    public static void uploadByteArrayAsAscii(String host, String username, String password, byte[] byteArray, String remoteFilePath) throws Exception {
+        // Create a new session
+        JSch jsch = new JSch();
+        Session session = jsch.getSession(username, host, 22);
+        session.setPassword(password);
+
+        // Configure the session for no host key checking
+        Properties config = new Properties();
+        config.put("StrictHostKeyChecking", "no");
+        session.setConfig(config);
+        session.connect();
+
+        // Open the SFTP channel
+        ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+        channelSftp.connect();
 
         // Convert byte array to BufferedReader
         try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArray);
-             InputStreamReader inputStreamReader = new InputStreamReader(byteArrayInputStream, StandardCharsets.UTF_8);
-             BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
+             InputStreamReader inputStreamReader = new InputStreamReader(byteArrayInputStream, StandardCharsets.US_ASCII);
+             BufferedReader reader = new BufferedReader(inputStreamReader)) {
 
-            // Read and print each line
+            // Use ByteArrayOutputStream to hold the ASCII bytes
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                System.out.println(line);
+
+            // Read the byte array line by line and convert to ASCII format
+            while ((line = reader.readLine()) != null) {
+                // Append CRLF for Windows compatibility
+                byteArrayOutputStream.write((line + "\r\n").getBytes(StandardCharsets.US_ASCII));
             }
+
+            // Upload the file using ASCII transfer mode
+            try (InputStream inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray())) {
+                channelSftp.put(inputStream, remoteFilePath, ChannelSftp.OVERWRITE); // Use OVERWRITE mode
+            }
+        }
+
+        // Close the SFTP channel and session
+        channelSftp.disconnect();
+        session.disconnect();
+
+        System.out.println("Byte array uploaded successfully in ASCII format.");
+    }
+
+    public static void main(String[] args) {
+        try {
+            // SFTP details
+            String sftpHost = "your.mainframe.host.com"; // Replace with your mainframe host
+            String sftpUsername = "your-username"; // Replace with your SFTP username
+            String sftpPassword = "your-password"; // Replace with your SFTP password
+            String remoteFilePath = "/path/on/mainframe/file.txt"; // Specify the remote path
+
+            // Sample content to upload (replace this with your actual data)
+            String sampleContent = "Line 1\nLine 2\nLine 3";
+            byte[] byteArray = sampleContent.getBytes(StandardCharsets.US_ASCII); // Convert string to byte array
+
+            // Upload the byte array in ASCII format
+            uploadByteArrayAsAscii(sftpHost, sftpUsername, sftpPassword, byteArray, remoteFilePath);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
