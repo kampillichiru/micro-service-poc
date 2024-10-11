@@ -1,16 +1,42 @@
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
-
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import org.w3c.dom.Document;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 public class MainframeFileTransfer {
 
-    // Method to upload XML file to the mainframe
-    public static void uploadXmlToMainframe(String host, String username, String password, String localFilePath) throws Exception {
+    // Method to prettify and upload XML file to the mainframe
+    public static void uploadFormattedXmlToMainframe(String host, String username, String password, String localFilePath) throws Exception {
+        // Parse the original XML file to ensure it is well-formed
+        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+        Document doc = dBuilder.parse(new File(localFilePath));
+        
+        // Prettify XML content
+        StringWriter writer = new StringWriter();
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformerFactory.newTransformer();
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        transformer.setOutputProperty("{http://xml.apache.org/xalan}indent-amount", "2");
+        transformer.transform(new DOMSource(doc), new StreamResult(writer));
+        String formattedXml = writer.getBuffer().toString();
+
+        // Ensure CRLF line endings for mainframe compatibility
+        formattedXml = formattedXml.replace("\n", "\r\n");
+
+        // Convert to bytes
+        byte[] xmlBytes = formattedXml.getBytes(StandardCharsets.UTF_8);
+
+        // SFTP Upload
         JSch jsch = new JSch();
         Session session = jsch.getSession(username, host, 22);
         session.setPassword(password);
@@ -24,17 +50,7 @@ public class MainframeFileTransfer {
         ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
         channelSftp.connect();
 
-        // Read the local XML file with UTF-8 encoding
-        File file = new File(localFilePath);
-        String xmlContent = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-
-        // Replace line endings with CRLF (Windows style) if necessary
-        xmlContent = xmlContent.replace("\n", "\r\n");
-
-        // Convert to bytes
-        byte[] xmlBytes = xmlContent.getBytes(StandardCharsets.UTF_8);
-
-        // Use ByteArrayInputStream to upload the file
+        // Upload the XML file
         try (ByteArrayInputStream byteInputStream = new ByteArrayInputStream(xmlBytes)) {
             String remoteFilePath = "/default/path/on/mainframe/file.xml"; // Specify the path
             channelSftp.put(byteInputStream, remoteFilePath, ChannelSftp.OVERWRITE);
@@ -44,7 +60,7 @@ public class MainframeFileTransfer {
         channelSftp.disconnect();
         session.disconnect();
 
-        System.out.println("XML file uploaded successfully to the mainframe.");
+        System.out.println("Formatted XML file uploaded successfully to the mainframe.");
     }
 
     public static void main(String[] args) {
@@ -56,7 +72,7 @@ public class MainframeFileTransfer {
             String localFilePath = "path/to/local/file.xml";  // Your local XML file path
 
             // Upload XML file to mainframe
-            uploadXmlToMainframe(sftpHost, sftpUsername, sftpPassword, localFilePath);
+            uploadFormattedXmlToMainframe(sftpHost, sftpUsername, sftpPassword, localFilePath);
 
         } catch (Exception e) {
             e.printStackTrace();
