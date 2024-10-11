@@ -1,49 +1,95 @@
-public static void uploadToMainframe(String host, String username, String password, String localFilePath, String remoteFilePath) throws Exception {
-        JSch jsch = new JSch();
-        Session session = jsch.getSession(username, host, 22);
-        session.setPassword(password);
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 
-        // Set strict host key checking to no (for simplicity)
-        Properties config = new Properties();
-        config.put("StrictHostKeyChecking", "no");
-        session.setConfig(config);
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Properties;
 
-        // Connect to the session
-        session.connect();
+public class MainframeXMLTransfer {
 
-        // Open SFTP channel
-        ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
-        channelSftp.connect();
-
-        // Upload the file in binary mode
-        FileInputStream fileInputStream = new FileInputStream(localFilePath);
-        channelSftp.put(fileInputStream, remoteFilePath, ChannelSftp.OVERWRITE);
-
-        // Close resources
-        fileInputStream.close();
-        channelSftp.disconnect();
-        session.disconnect();
-    }
-
-
-
-public static void formatXml(String inputFilePath, String outputFilePath) throws Exception {
-        // Set up the transformer for pretty-printing
+    // Method to format and prettify the XML with UTF-8 encoding
+    public static void formatXml(String inputFilePath, String outputFilePath) throws Exception {
+        // Set up the transformer for pretty-printing the XML
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         Transformer transformer = transformerFactory.newTransformer();
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
         transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
 
-        // Read and transform the XML
+        // Perform XML formatting
         StreamSource source = new StreamSource(new File(inputFilePath));
         StreamResult result = new StreamResult(new File(outputFilePath));
-
         transformer.transform(source, result);
 
-        // Convert the formatted file to ensure correct line endings (Windows style, required by some mainframes)
+        // Ensure correct CRLF line endings for the mainframe system
         String formattedXml = new String(Files.readAllBytes(Paths.get(outputFilePath)), StandardCharsets.UTF_8);
-        String formattedXmlWithCorrectLineEndings = formattedXml.replace("\n", "\r\n"); // Ensuring CRLF line endings for mainframe
+        String formattedXmlWithCorrectLineEndings = formattedXml.replace("\n", "\r\n");
 
-        // Write back the formatted file with proper line endings
+        // Write the formatted XML back to the file using UTF-8 encoding
         Files.write(Paths.get(outputFilePath), formattedXmlWithCorrectLineEndings.getBytes(StandardCharsets.UTF_8));
+        System.out.println("XML file formatted with UTF-8 and CRLF line endings.");
     }
+
+    // Method to upload the file via SFTP to the mainframe (line by line)
+    public static void uploadToMainframe(String host, String username, String password, String localFilePath, String remoteFilePath) throws Exception {
+        JSch jsch = new JSch();
+        Session session = jsch.getSession(username, host, 22);
+        session.setPassword(password);
+
+        // Configure session with no host key checking
+        Properties config = new Properties();
+        config.put("StrictHostKeyChecking", "no");
+        session.setConfig(config);
+
+        // Connect to the SFTP session
+        session.connect();
+
+        // Open the SFTP channel
+        ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+        channelSftp.connect();
+
+        // Manually handle line endings and upload line by line to avoid issues
+        BufferedReader reader = new BufferedReader(new FileReader(localFilePath));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            String formattedLine = line + "\r\n";  // Add CRLF line endings explicitly
+            channelSftp.put(new ByteArrayInputStream(formattedLine.getBytes(StandardCharsets.UTF_8)), remoteFilePath, ChannelSftp.APPEND);
+        }
+        reader.close();
+
+        // Disconnect the channel and session
+        channelSftp.disconnect();
+        session.disconnect();
+        System.out.println("File uploaded successfully to mainframe via SFTP (line by line).");
+    }
+
+    public static void main(String[] args) {
+        try {
+            // File paths for input XML and output formatted XML
+            String inputFilePath = "input.xml";
+            String outputFilePath = "formatted_output.xml";
+
+            // Format the XML file
+            formatXml(inputFilePath, outputFilePath);
+
+            // Mainframe SFTP details
+            String sftpHost = "mainframe.host.com";
+            String sftpUsername = "your-username";
+            String sftpPassword = "your-password";
+            String remoteFilePath = "/path/on/mainframe/formatted_output.xml";
+
+            // Upload the formatted file to the mainframe
+            uploadToMainframe(sftpHost, sftpUsername, sftpPassword, outputFilePath, remoteFilePath);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
