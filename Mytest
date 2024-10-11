@@ -1,42 +1,16 @@
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
-import javax.xml.transform.*;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import org.w3c.dom.Document;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
-public class MainframeFileTransfer {
+public class SftpAsciiUpload {
 
-    // Method to prettify and upload XML file to the mainframe
-    public static void uploadFormattedXmlToMainframe(String host, String username, String password, String localFilePath) throws Exception {
-        // Parse the original XML file to ensure it is well-formed
-        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-        Document doc = dBuilder.parse(new File(localFilePath));
-        
-        // Prettify XML content
-        StringWriter writer = new StringWriter();
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xalan}indent-amount", "2");
-        transformer.transform(new DOMSource(doc), new StreamResult(writer));
-        String formattedXml = writer.getBuffer().toString();
-
-        // Ensure CRLF line endings for mainframe compatibility
-        formattedXml = formattedXml.replace("\n", "\r\n");
-
-        // Convert to bytes
-        byte[] xmlBytes = formattedXml.getBytes(StandardCharsets.UTF_8);
-
-        // SFTP Upload
+    // Method to upload a file in ASCII format
+    public static void uploadFileAsAscii(String host, String username, String password, String localFilePath, String remoteFilePath) throws Exception {
+        // Create a new session
         JSch jsch = new JSch();
         Session session = jsch.getSession(username, host, 22);
         session.setPassword(password);
@@ -47,32 +21,46 @@ public class MainframeFileTransfer {
         session.setConfig(config);
         session.connect();
 
+        // Open the SFTP channel
         ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
         channelSftp.connect();
 
-        // Upload the XML file
-        try (ByteArrayInputStream byteInputStream = new ByteArrayInputStream(xmlBytes)) {
-            String remoteFilePath = "/default/path/on/mainframe/file.xml"; // Specify the path
-            channelSftp.put(byteInputStream, remoteFilePath, ChannelSftp.OVERWRITE);
+        // Read the local file as ASCII
+        try (BufferedReader reader = new BufferedReader(new FileReader(localFilePath))) {
+            // Use ByteArrayOutputStream to hold the ASCII bytes
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            String line;
+            
+            // Read the file line by line, and convert to ASCII format
+            while ((line = reader.readLine()) != null) {
+                // Convert the line to ASCII and append CRLF for Windows compatibility
+                byteArrayOutputStream.write((line + "\r\n").getBytes(StandardCharsets.US_ASCII));
+            }
+
+            // Upload the file using ASCII transfer mode
+            try (InputStream inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray())) {
+                channelSftp.put(inputStream, remoteFilePath, ChannelSftp.OVERWRITE); // Use OVERWRITE mode
+            }
         }
 
-        // Close connections
+        // Close the SFTP channel and session
         channelSftp.disconnect();
         session.disconnect();
 
-        System.out.println("Formatted XML file uploaded successfully to the mainframe.");
+        System.out.println("File uploaded successfully in ASCII format.");
     }
 
     public static void main(String[] args) {
         try {
-            // Mainframe SFTP details
-            String sftpHost = "mainframe.host.com";
-            String sftpUsername = "your-username";
-            String sftpPassword = "your-password";
-            String localFilePath = "path/to/local/file.xml";  // Your local XML file path
+            // SFTP details
+            String sftpHost = "your.mainframe.host.com"; // Replace with your mainframe host
+            String sftpUsername = "your-username"; // Replace with your SFTP username
+            String sftpPassword = "your-password"; // Replace with your SFTP password
+            String localFilePath = "path/to/your/local/file.txt"; // Replace with your local file path
+            String remoteFilePath = "/path/on/mainframe/file.txt"; // Specify the remote path
 
-            // Upload XML file to mainframe
-            uploadFormattedXmlToMainframe(sftpHost, sftpUsername, sftpPassword, localFilePath);
+            // Upload the file in ASCII format
+            uploadFileAsAscii(sftpHost, sftpUsername, sftpPassword, localFilePath, remoteFilePath);
 
         } catch (Exception e) {
             e.printStackTrace();
