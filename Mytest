@@ -1,3 +1,7 @@
+       transformer.setOutputProperty("omit-xml-declaration", "yes");
+        transformer.setOutputProperty("lineSeparator", "\n"); // Use line breaks
+
+
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
