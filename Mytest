@@ -66,3 +66,28 @@ public class XmlFormatter {
         return writer.getBuffer().toString();
     }
 }
+
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.integration.sftp.session.SftpSessionFactory;
+import org.springframework.stereotype.Service;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
+@Service
+public class SftpService {
+
+    @Autowired
+    private SftpSessionFactory sftpSessionFactory;
+
+    public void uploadXmlFile(String xmlContent, String remotePath) throws Exception {
+        // Format the XML
+        String formattedXml = XmlFormatter.formatXml(xmlContent);
+        
+        // Upload the formatted XML
+        try (InputStream inputStream = new ByteArrayInputStream(formattedXml.getBytes())) {
+            sftpSessionFactory.getSession().write(inputStream, remotePath);
+        }
+    }
+}
