@@ -1,1 +1,99 @@
-helm upgrade my-release my-chart -f values.yml --set ingress.annotations."kubernetes\.io/ingress\.class"=my-dynamic-class
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+public class ZipXmlFile {
+
+    public static void main(String[] args) {
+        String xmlFilePath = "path/to/your/xmlfile.xml"; // Path to the XML file
+        String zipFilePath = "path/to/your/outputfile.zip"; // Path for the output ZIP file
+        
+        try {
+            zipXmlFile(xmlFilePath, zipFilePath);
+            System.out.println("XML file compressed to ZIP successfully.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void zipXmlFile(String xmlFilePath, String zipFilePath) throws IOException {
+        // Create a buffer to read the XML file
+        byte[] buffer = new byte[1024];
+
+        // Create a ZipOutputStream to write to the ZIP file
+        try (FileOutputStream fos = new FileOutputStream(zipFilePath);
+             ZipOutputStream zos = new ZipOutputStream(fos);
+             FileInputStream fis = new FileInputStream(xmlFilePath)) {
+
+            // Add a new ZIP entry to the ZIP file
+            ZipEntry zipEntry = new ZipEntry("file.xml"); // The name of the file inside the ZIP
+            zos.putNextEntry(zipEntry);
+
+            // Read the XML file and write it to the ZIP file
+            int length;
+            while ((length = fis.read(buffer)) > 0) {
+                zos.write(buffer, 0, length);
+            }
+
+            // Close the entry
+            zos.closeEntry();
+        }
+    }
+}
+
+
+
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.Properties;
+
+public class SftpUploadZip {
+
+    public static void main(String[] args) {
+        // Replace these with your actual SFTP details and file paths
+        String sftpHost = "your.mainframe.host.com"; // SFTP server host
+        String sftpUsername = "your-username"; // SFTP username
+        String sftpPassword = "your-password"; // SFTP password
+        String localZipFilePath = "path/to/your/local/file.zip"; // Local ZIP file to upload
+        String remoteFilePath = "/path/on/sftp/file.zip"; // Remote path on the SFTP server
+
+        try {
+            uploadZipFile(sftpHost, sftpUsername, sftpPassword, localZipFilePath, remoteFilePath);
+            System.out.println("ZIP file uploaded successfully.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void uploadZipFile(String host, String username, String password, String localFilePath, String remoteFilePath) throws Exception {
+        // Create a new session
+        JSch jsch = new JSch();
+        Session session = jsch.getSession(username, host, 22);
+        session.setPassword(password);
+
+        // Configure the session for no host key checking
+        Properties config = new Properties();
+        config.put("StrictHostKeyChecking", "no");
+        session.setConfig(config);
+        session.connect();
+
+        // Open the SFTP channel
+        ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+        channelSftp.connect();
+
+        // Upload the ZIP file in binary mode
+        try (InputStream inputStream = new FileInputStream(localFilePath)) {
+            channelSftp.put(inputStream, remoteFilePath, ChannelSftp.OVERWRITE); // Use OVERWRITE mode to replace any existing file
+        }
+
+        // Close the SFTP channel and session
+        channelSftp.disconnect();
+        session.disconnect();
+    }
+}
