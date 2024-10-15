@@ -1,61 +1,52 @@
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.io.*;
+import java.util.zip.*;
 
 public class ZipXmlFile {
+    public static void zipXmlFile(String xmlFilePath, String zipFilePath) throws IOException {
+        File xmlFile = new File(xmlFilePath);
+        long fileSize = xmlFile.length();
+        long crc32Value = calculateCrc32(xmlFile);
 
-    public static void main(String[] args) {
-        String xmlFilePath = "path/to/your/xmlfile.xml"; // Path to the XML file
-        String zipFilePath = "path/to/your/outputfile.zip"; // Path for the output ZIP file
-        
-        try {
-            zipXmlFileWithoutCompression(xmlFilePath, zipFilePath);
-            System.out.println("XML file compressed to ZIP successfully without compression.");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static void zipXmlFileWithoutCompression(String xmlFilePath, String zipFilePath) throws IOException {
-        // Create a buffer to read the XML file
-        byte[] buffer = new byte[1024];
-
-        // Create a ZipOutputStream to write to the ZIP file
         try (FileOutputStream fos = new FileOutputStream(zipFilePath);
              ZipOutputStream zos = new ZipOutputStream(fos);
              FileInputStream fis = new FileInputStream(xmlFilePath)) {
 
-            // Add a new ZIP entry to the ZIP file
-            ZipEntry zipEntry = new ZipEntry("file.xml"); // The name of the file inside the ZIP
-            zipEntry.setMethod(ZipEntry.STORED); // Set compression method to STORED (no compression)
-            zipEntry.setSize(fis.available()); // Set the size of the file
-            zipEntry.setCrc(computeCRC32(xmlFilePath)); // Set the CRC checksum of the file
-
+            // Create a ZIP entry with the correct size and CRC for the STORED method
+            ZipEntry zipEntry = new ZipEntry("file.xml");
+            zipEntry.setMethod(ZipEntry.STORED);
+            zipEntry.setSize(fileSize);
+            zipEntry.setCrc(crc32Value);
             zos.putNextEntry(zipEntry);
 
-            // Read the XML file and write it to the ZIP file
+            // Write the XML content to the ZIP file
+            byte[] buffer = new byte[1024];
             int length;
             while ((length = fis.read(buffer)) > 0) {
                 zos.write(buffer, 0, length);
             }
-
-            // Close the entry
             zos.closeEntry();
         }
     }
 
-    // Utility method to compute CRC32 checksum of the file
-    public static long computeCRC32(String filePath) throws IOException {
-        try (FileInputStream fis = new FileInputStream(filePath)) {
-            java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+    // Calculate CRC32 checksum
+    private static long calculateCrc32(File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            CRC32 crc = new CRC32();
             byte[] buffer = new byte[1024];
             int length;
             while ((length = fis.read(buffer)) > 0) {
                 crc.update(buffer, 0, length);
             }
             return crc.getValue();
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            zipXmlFile("path/to/xmlfile.xml", "path/to/outputfile.zip");
+            System.out.println("ZIP file created successfully.");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
