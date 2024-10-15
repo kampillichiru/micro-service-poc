@@ -1,52 +1,68 @@
-import java.io.*;
-import java.util.zip.*;
+<dependencies>
+    <!-- Spring Boot Starter -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter</artifactId>
+    </dependency>
 
-public class ZipXmlFile {
-    public static void zipXmlFile(String xmlFilePath, String zipFilePath) throws IOException {
-        File xmlFile = new File(xmlFilePath);
-        long fileSize = xmlFile.length();
-        long crc32Value = calculateCrc32(xmlFile);
+    <!-- Spring Integration SFTP -->
+    <dependency>
+        <groupId>org.springframework.integration</groupId>
+        <artifactId>spring-integration-sftp</artifactId>
+    </dependency>
 
-        try (FileOutputStream fos = new FileOutputStream(zipFilePath);
-             ZipOutputStream zos = new ZipOutputStream(fos);
-             FileInputStream fis = new FileInputStream(xmlFilePath)) {
+    <!-- XML Parsing -->
+    <dependency>
+        <groupId>javax.xml</groupId>
+        <artifactId>jaxb-api</artifactId>
+    </dependency>
+</dependencies>
 
-            // Create a ZIP entry with the correct size and CRC for the STORED method
-            ZipEntry zipEntry = new ZipEntry("file.xml");
-            zipEntry.setMethod(ZipEntry.STORED);
-            zipEntry.setSize(fileSize);
-            zipEntry.setCrc(crc32Value);
-            zos.putNextEntry(zipEntry);
 
-            // Write the XML content to the ZIP file
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = fis.read(buffer)) > 0) {
-                zos.write(buffer, 0, length);
-            }
-            zos.closeEntry();
-        }
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.EnableIntegration;
+import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
+import org.springframework.integration.sftp.session.SftpSessionFactory;
+
+@Configuration
+@EnableIntegration
+public class SftpConfig {
+
+    @Bean
+    public SftpSessionFactory sftpSessionFactory() {
+        DefaultSftpSessionFactory factory = new DefaultSftpSessionFactory();
+        factory.setHost("your.host.com");
+        factory.setPort(22);
+        factory.setUser("username");
+        factory.setPassword("password");
+        factory.setAllowUnknownKeys(true);
+        return factory;
     }
+}
 
-    // Calculate CRC32 checksum
-    private static long calculateCrc32(File file) throws IOException {
-        try (FileInputStream fis = new FileInputStream(file)) {
-            CRC32 crc = new CRC32();
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = fis.read(buffer)) > 0) {
-                crc.update(buffer, 0, length);
-            }
-            return crc.getValue();
-        }
-    }
 
-    public static void main(String[] args) {
-        try {
-            zipXmlFile("path/to/xmlfile.xml", "path/to/outputfile.zip");
-            System.out.println("ZIP file created successfully.");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import org.w3c.dom.Document;
+import java.io.StringReader;
+import java.io.StringWriter;
+import org.xml.sax.InputSource;
+
+public class XmlFormatter {
+    public static String formatXml(String xml) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        Document doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformerFactory.newTransformer();
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+        StringWriter writer = new StringWriter();
+        transformer.transform(new DOMSource(doc), new StreamResult(writer));
+        return writer.getBuffer().toString();
     }
 }
