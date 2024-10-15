@@ -1,93 +1,127 @@
-<dependencies>
-    <!-- Spring Boot Starter -->
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter</artifactId>
-    </dependency>
-
-    <!-- Spring Integration SFTP -->
-    <dependency>
-        <groupId>org.springframework.integration</groupId>
-        <artifactId>spring-integration-sftp</artifactId>
-    </dependency>
-
-    <!-- XML Parsing -->
-    <dependency>
-        <groupId>javax.xml</groupId>
-        <artifactId>jaxb-api</artifactId>
-    </dependency>
-</dependencies>
-
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.integration.annotation.EnableIntegration;
-import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
-import org.springframework.integration.sftp.session.SftpSessionFactory;
-
-@Configuration
-@EnableIntegration
-public class SftpConfig {
-
-    @Bean
-    public SftpSessionFactory sftpSessionFactory() {
-        DefaultSftpSessionFactory factory = new DefaultSftpSessionFactory();
-        factory.setHost("your.host.com");
-        factory.setPort(22);
-        factory.setUser("username");
-        factory.setPassword("password");
-        factory.setAllowUnknownKeys(true);
-        return factory;
-    }
-}
-
-
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import org.w3c.dom.Document;
-import java.io.StringReader;
-import java.io.StringWriter;
-import org.xml.sax.InputSource;
-
-public class XmlFormatter {
-    public static String formatXml(String xml) throws Exception {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        Document doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-        StringWriter writer = new StringWriter();
-        transformer.transform(new DOMSource(doc), new StreamResult(writer));
-        return writer.getBuffer().toString();
-    }
-}
-
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.integration.sftp.session.SftpSessionFactory;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpException;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 @Service
 public class SftpService {
 
-    @Autowired
-    private SftpSessionFactory sftpSessionFactory;
+    private String sftpHost = "your.sftp.host.com";
+    private int sftpPort = 22; // SFTP port (default is 22)
+    private String sftpUser = "your-username";
+    private String sftpPassword = "your-password";
+    private String sftpRemoteDir = "/remote/path/"; // Remote directory
 
-    public void uploadXmlFile(String xmlContent, String remotePath) throws Exception {
-        // Format the XML
-        String formattedXml = XmlFormatter.formatXml(xmlContent);
-        
-        // Upload the formatted XML
-        try (InputStream inputStream = new ByteArrayInputStream(formattedXml.getBytes())) {
-            sftpSessionFactory.getSession().write(inputStream, remotePath);
+    public void uploadFile(String localFilePath, String remoteFileName) throws Exception {
+        JSch jsch = new JSch();
+        Session session = null;
+        ChannelSftp sftpChannel = null;
+
+        try {
+            // Establish the session
+            session = jsch.getSession(sftpUser, sftpHost, sftpPort);
+            session.setPassword(sftpPassword);
+
+            // Set StrictHostKeyChecking to no to avoid UnknownHostKey issue
+            session.setConfig("StrictHostKeyChecking", "no");
+            session.connect();
+
+            // Open SFTP channel
+            sftpChannel = (ChannelSftp) session.openChannel("sftp");
+            sftpChannel.connect();
+
+            // Transfer file in binary mode
+            try (FileInputStream fileInputStream = new FileInputStream(localFilePath)) {
+                // Upload the file
+                sftpChannel.put(fileInputStream, sftpRemoteDir + remoteFileName, ChannelSftp.OVERWRITE);
+            }
+
+        } catch (SftpException | IOException e) {
+            throw new Exception("Error occurred while uploading the file via SFTP: " + e.getMessage(), e);
+        } finally {
+            if (sftpChannel != null) {
+                sftpChannel.exit();
+            }
+            if (session != null) {
+                session.disconnect();
+            }
         }
+    }
+}
+
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+public class ZipUtility {
+
+    public static void zipFile(String sourceFile, String zipFile) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(zipFile);
+             ZipOutputStream zipOut = new ZipOutputStream(fos);
+             FileInputStream fis = new FileInputStream(sourceFile)) {
+
+            ZipEntry zipEntry = new ZipEntry(sourceFile.substring(sourceFile.lastIndexOf("/") + 1));
+            zipOut.putNextEntry(zipEntry);
+
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = fis.read(buffer)) >= 0) {
+                zipOut.write(buffer, 0, length);
+            }
+            zipOut.closeEntry();
+        }
+    }
+}
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+public class ZipUtility {
+
+    public static void zipFile(String sourceFile, String zipFile) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(zipFile);
+             ZipOutputStream zipOut = new ZipOutputStream(fos);
+             FileInputStream fis = new FileInputStream(sourceFile)) {
+
+            ZipEntry zipEntry = new ZipEntry(sourceFile.substring(sourceFile.lastIndexOf("/") + 1));
+            zipOut.putNextEntry(zipEntry);
+
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = fis.read(buffer)) >= 0) {
+                zipOut.write(buffer, 0, length);
+            }
+            zipOut.closeEntry();
+        }
+    }
+}
+
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import java.io.File;
+
+// Example class to be marshalled to XML
+public class XmlFileGenerator {
+
+    public static void generateXmlFile(Object object, String outputFilePath) throws JAXBException {
+        JAXBContext context = JAXBContext.newInstance(object.getClass());
+        Marshaller marshaller = context.createMarshaller();
+
+        // Format the XML output
+        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+
+        // Write the formatted XML to a file
+        marshaller.marshal(object, new File(outputFilePath));
     }
 }
