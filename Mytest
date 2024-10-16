@@ -1,127 +1,108 @@
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Session;
-import com.jcraft.jsch.SftpException;
-import org.springframework.stereotype.Service;
+ Use UTF-8 Encoding with ASCII Transfer Mode
 
-import java.io.FileInputStream;
-import java.io.IOException;
+String content = Files.readString(Paths.get(localFilePath), StandardCharsets.UTF_8);
+try (BufferedReader reader = new BufferedReader(new StringReader(content))) {
+    sftpChannel.put(new InputStreamReader(reader, StandardCharsets.UTF_8), sftpRemoteDir + remoteFileName, ChannelSftp.OVERWRITE);
+}
 
-@Service
-public class SftpService {
 
-    private String sftpHost = "your.sftp.host.com";
-    private int sftpPort = 22; // SFTP port (default is 22)
-    private String sftpUser = "your-username";
-    private String sftpPassword = "your-password";
-    private String sftpRemoteDir = "/remote/path/"; // Remote directory
 
-    public void uploadFile(String localFilePath, String remoteFileName) throws Exception {
-        JSch jsch = new JSch();
-        Session session = null;
-        ChannelSftp sftpChannel = null;
+Use EBCDIC Encoding with Proper Translation
 
-        try {
-            // Establish the session
-            session = jsch.getSession(sftpUser, sftpHost, sftpPort);
-            session.setPassword(sftpPassword);
 
-            // Set StrictHostKeyChecking to no to avoid UnknownHostKey issue
-            session.setConfig("StrictHostKeyChecking", "no");
-            session.connect();
+byte[] ebcdicContent = content.getBytes("Cp037"); // Cp037 is an EBCDIC code page
+try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(ebcdicContent)) {
+    sftpChannel.put(byteArrayInputStream, sftpRemoteDir + remoteFileName, ChannelSftp.OVERWRITE);
+}
 
-            // Open SFTP channel
-            sftpChannel = (ChannelSftp) session.openChannel("sftp");
-            sftpChannel.connect();
 
-            // Transfer file in binary mode
-            try (FileInputStream fileInputStream = new FileInputStream(localFilePath)) {
-                // Upload the file
-                sftpChannel.put(fileInputStream, sftpRemoteDir + remoteFileName, ChannelSftp.OVERWRITE);
+Transfer as Compressed (ZIP/GZIP) File:
+
+try (FileInputStream fileInputStream = new FileInputStream(localZipFilePath)) {
+    sftpChannel.put(fileInputStream, sftpRemoteDir + remoteZipFileName, ChannelSftp.OVERWRITE);
+}
+
+
+
+Transfer as Base64-Encoded XML:
+
+byte[] encodedBytes = Base64.getEncoder().encode(Files.readAllBytes(Paths.get(localFilePath)));
+try (ByteArrayInputStream inputStream = new ByteArrayInputStream(encodedBytes)) {
+    sftpChannel.put(inputStream, sftpRemoteDir + remoteFileName, ChannelSftp.OVERWRITE);
+}
+
+
+Create the Fixed-Width Content:
+
+String fixedWidthContent = prettifiedXml.lines()
+    .map(line -> String.format("%-80s", line)) // Ensuring 80-char lines
+    .collect(Collectors.joining("\n"));
+Path tempFile = Files.createTempFile("fixedWidthXml", ".txt");
+Files.write(tempFile, fixedWidthContent.getBytes(StandardCharsets.US_ASCII));
+try (FileInputStream fileInputStream = new FileInputStream(tempFile.toFile())) {
+    sftpChannel.put(fileInputStream, sftpRemoteDir + remoteFileName, ChannelSftp.OVERWRITE);
+}
+
+
+(Alternative) Direct Transfer Without Storing Locally
+
+try (InputStream inputStream = new ByteArrayInputStream(fixedWidthContent.getBytes(StandardCharsets.US_ASCII))) {
+    sftpChannel.put(inputStream, sftpRemoteDir + remoteFileName, ChannelSftp.OVERWRITE);
+}
+
+
+
+Way-6:
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import com.jcraft.jsch.*;
+
+public class FileTransfer {
+
+    public void transferXmlFileToMainframe(String outputFilePath, String fileName, ChannelSftp channelSftp, Session session) {
+        File tempFile = null;
+        
+        try (FileInputStream fis = new FileInputStream(outputFilePath);
+             InputStreamReader reader = new InputStreamReader(fis, StandardCharsets.UTF_8);
+             BufferedReader bufferedReader = new BufferedReader(reader)) {
+
+            // Create a temporary file to hold the XML data
+            tempFile = File.createTempFile(fileName, ".xml");
+
+            // Writing to the temp file using BufferedWriter for performance
+            try (FileWriter fileWriter = new FileWriter(tempFile, StandardCharsets.UTF_8);
+                 BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
+
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    bufferedWriter.write(line);
+                    bufferedWriter.newLine();  // More efficient line separator
+                }
             }
 
-        } catch (SftpException | IOException e) {
-            throw new Exception("Error occurred while uploading the file via SFTP: " + e.getMessage(), e);
+            // Transfer the file via SFTP
+            try (FileInputStream encodedFileInputStream = new FileInputStream(tempFile)) {
+                channelSftp.put(encodedFileInputStream, fileName);
+            } catch (SftpException e) {
+                System.err.println("SFTP error during file upload: " + e.getMessage());
+            }
+
+        } catch (IOException e) {
+            System.err.println("I/O error during file processing: " + e.getMessage());
         } finally {
-            if (sftpChannel != null) {
-                sftpChannel.exit();
+            // Cleanup
+            if (tempFile != null && tempFile.exists()) {
+                if (!tempFile.delete()) {
+                    System.err.println("Failed to delete temporary file: " + tempFile.getAbsolutePath());
+                }
+            }
+            if (channelSftp != null) {
+                channelSftp.disconnect();
             }
             if (session != null) {
                 session.disconnect();
             }
         }
-    }
-}
-
-
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
-public class ZipUtility {
-
-    public static void zipFile(String sourceFile, String zipFile) throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(zipFile);
-             ZipOutputStream zipOut = new ZipOutputStream(fos);
-             FileInputStream fis = new FileInputStream(sourceFile)) {
-
-            ZipEntry zipEntry = new ZipEntry(sourceFile.substring(sourceFile.lastIndexOf("/") + 1));
-            zipOut.putNextEntry(zipEntry);
-
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = fis.read(buffer)) >= 0) {
-                zipOut.write(buffer, 0, length);
-            }
-            zipOut.closeEntry();
-        }
-    }
-}
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
-public class ZipUtility {
-
-    public static void zipFile(String sourceFile, String zipFile) throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(zipFile);
-             ZipOutputStream zipOut = new ZipOutputStream(fos);
-             FileInputStream fis = new FileInputStream(sourceFile)) {
-
-            ZipEntry zipEntry = new ZipEntry(sourceFile.substring(sourceFile.lastIndexOf("/") + 1));
-            zipOut.putNextEntry(zipEntry);
-
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = fis.read(buffer)) >= 0) {
-                zipOut.write(buffer, 0, length);
-            }
-            zipOut.closeEntry();
-        }
-    }
-}
-
-
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import java.io.File;
-
-// Example class to be marshalled to XML
-public class XmlFileGenerator {
-
-    public static void generateXmlFile(Object object, String outputFilePath) throws JAXBException {
-        JAXBContext context = JAXBContext.newInstance(object.getClass());
-        Marshaller marshaller = context.createMarshaller();
-
-        // Format the XML output
-        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-
-        // Write the formatted XML to a file
-        marshaller.marshal(object, new File(outputFilePath));
     }
 }
