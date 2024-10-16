@@ -106,3 +106,45 @@ public class FileTransfer {
         }
     }
 }
+
+
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+
+public class SFTPTransfer {
+    public static void main(String[] args) {
+        String host = "your.sftp.server";
+        String user = "your_username";
+        String password = "your_password";
+        String remoteDirectory = "/remote/path/";
+        String localFilePath = "path/to/your/local/file.txt";
+        String ebcdicFilePath = "path/to/your/ebcdic_file.txt";
+
+        try {
+            // Convert file to EBCDIC
+            EncodingConverter.convertToEBCDIC(new File(localFilePath), new File(ebcdicFilePath));
+
+            // Set up SFTP connection
+            JSch jsch = new JSch();
+            Session session = jsch.getSession(user, host, 22);
+            session.setPassword(password);
+            session.setConfig("StrictHostKeyChecking", "no");
+            session.connect();
+
+            // Create an SFTP channel
+            ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+            channelSftp.connect();
+
+            // Transfer the EBCDIC file
+            channelSftp.put(ebcdicFilePath, remoteDirectory + "your_remote_file_name.txt");
+
+            // Close the SFTP channel and session
+            channelSftp.disconnect();
+            session.disconnect();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
