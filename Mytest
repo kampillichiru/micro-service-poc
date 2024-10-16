@@ -148,3 +148,24 @@ public class SFTPTransfer {
     }
 }
 
+
+
+
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+
+public class EncodingConverter {
+    public static void convertToEBCDIC(File inputFile, File outputFile) throws IOException {
+        try (BufferedReader reader = Files.newBufferedReader(inputFile.toPath(), Charset.forName("UTF-8"));
+             BufferedWriter writer = Files.newBufferedWriter(outputFile.toPath(), Charset.forName("IBM1147"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                writer.write(line);
+                writer.newLine();
+            }
+        }
+    }
+}
+
+
