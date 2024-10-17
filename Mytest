@@ -1,4 +1,15 @@
- Use UTF-8 Encoding with ASCII Transfer Mode
+<build>
+  <plugins>
+    <plugin>
+      <groupId>org.codehaus.mojo</groupId>
+      <artifactId>versions-maven-plugin</artifactId>
+      <version>2.10.0</version> <!-- or your version -->
+    </plugin>
+  </plugins>
+</build>
+
+
+Use UTF-8 Encoding with ASCII Transfer Mode
 
 String content = Files.readString(Paths.get(localFilePath), StandardCharsets.UTF_8);
 try (BufferedReader reader = new BufferedReader(new StringReader(content))) {
